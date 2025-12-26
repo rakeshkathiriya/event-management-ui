@@ -47,8 +47,21 @@
 
 
 .quill-wrapper .ql-editor {
-  min-height: 120px;
+  min-height: 150px;
+  max-height: 400px;
+  overflow-y: auto;
+}
 
+.quill-wrapper .ql-toolbar {
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+  border: none;
+  background-color: #f9fafb;
+}
+
+.quill-wrapper .ql-container {
+  border: none;
+  font-size: 14px;
 }
 
 
@@ -85,13 +98,17 @@
 /* ===== Program Description Styles ===== */
 
 .program-description {
-  max-height: 280px;
+  max-height: 350px;
+
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 8px;
   color: #4b5563;
-  /* body text */
   line-height: 1.6;
   font-size: 14px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Headings */
@@ -142,6 +159,30 @@
 .program-description a {
   color: #2d6f6d;
   text-decoration: underline;
+}
+
+/* Prevent overflow from Quill content */
+.program-description * {
+  max-width: 100%;
+}
+
+.program-description img,
+.program-description video {
+  max-width: 100%;
+  height: auto;
+}
+
+.program-description pre,
+.program-description code {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.program-description table {
+  max-width: 100%;
+  overflow-x: auto;
+  display: block;
 }
 
 /* Scrollbar (optional, matches your theme) */

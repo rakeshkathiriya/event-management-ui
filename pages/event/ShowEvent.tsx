@@ -40,14 +40,7 @@ const ShowProgram = ({ programId, onClose }: ShowProgramProps) => {
 
         {/* Description (React-Quill HTML) */}
         <div
-          className="program-description  prose prose-sm sm:prose-base max-w-none
-             prose-h3:text-lg prose-h3:font-semibold prose-h3:text-[#044241]
-             prose-p:text-gray-700
-             prose-strong:text-[#044241]
-             prose-ul:pl-5 prose-ol:pl-5
-             prose-li:marker:text-[#2D6F6D]
-             prose-a:text-[#2D6F6D] prose-a:underline
-             max-h-70 overflow-y-auto pr-2"
+          className="program-description"
           dangerouslySetInnerHTML={{ __html: program.description }}
         />
         {/* Divider */}

@@ -99,12 +99,12 @@ const CreateProgramForm = ({ onCancel, refetchData }: CreateProgramFormProps) =>
           <label className="text-sm font-medium text-bgPrimaryDark">
             Description <span className="text-red-500">*</span>
           </label>
-          <div className="quill-wrapper mt-2 relative [&_.ql-container]:overflow-visible [&_.ql-tooltip]:z-[9999]">
+          <div className="quill-wrapper mt-2 rounded-xl border border-bgPrimary/30 overflow-hidden">
             <ReactQuill
               theme="snow"
               value={values.description}
               onChange={(val) => setFieldValue("description", val)}
-              bounds={"body"}
+              className="bg-white"
             />
           </div>
           <p className="text-xs text-red-500">{touched.description && errors.description}</p>

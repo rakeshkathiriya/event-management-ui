@@ -1,17 +1,37 @@
 "use client";
 
 import { Layers, Plus, Users } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 import { useGetDepartments } from "@/queries/department/department";
+import { useAuth } from "@/hooks/useAuth";
 import DepartmentForm from "./DepartmentForm";
 
 const Department = () => {
+  const router = useRouter();
+  const { isAdmin, isLoading: authLoading } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
   const { data, isLoading, error, refetch } = useGetDepartments();
 
   const departments = data?.data?.departments ?? [];
   const totalUsers = departments.reduce((sum, d) => sum + d.totalUsers, 0);
+
+  // Redirect non-admin users
+  useEffect(() => {
+    if (!authLoading && !isAdmin) {
+      router.replace("/main/programs");
+    }
+  }, [isAdmin, authLoading, router]);
+
+  // Show loading while checking permissions
+  if (authLoading || !isAdmin) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 md:p-10 space-y-8">

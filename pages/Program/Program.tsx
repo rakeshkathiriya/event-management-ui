@@ -3,11 +3,13 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
+import { useAuth } from "@/hooks/useAuth";
 import EventSidebar from "../event/Event";
 import CreateEventForm from "../event/EventForm";
 import CreateProgramForm from "./ProgramForm";
 
 const Program = () => {
+  const { isAdmin } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
 
@@ -22,25 +24,28 @@ const Program = () => {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-gray-800">Programs</h1>
 
-          <div className="flex gap-4">
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="group flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
-              style={{ background: "linear-gradient(135deg, #044241 0%, #2D6F6D 100%)" }}
-            >
-              <Plus size={18} className="transition-transform group-hover:rotate-90" />
-              Create Program
-            </button>
+          {/* Admin-only create buttons */}
+          {isAdmin && (
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="group flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
+                style={{ background: "linear-gradient(135deg, #044241 0%, #2D6F6D 100%)" }}
+              >
+                <Plus size={18} className="transition-transform group-hover:rotate-90" />
+                Create Program
+              </button>
 
-            <button
-              onClick={() => setShowEventModal(true)}
-              className="group flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
-              style={{ background: "linear-gradient(135deg, #044241 0%, #2D6F6D 100%)" }}
-            >
-              <Plus size={18} className="transition-transform group-hover:rotate-90" />
-              Create Event
-            </button>
-          </div>
+              <button
+                onClick={() => setShowEventModal(true)}
+                className="group flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
+                style={{ background: "linear-gradient(135deg, #044241 0%, #2D6F6D 100%)" }}
+              >
+                <Plus size={18} className="transition-transform group-hover:rotate-90" />
+                Create Event
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Content area placeholder */}

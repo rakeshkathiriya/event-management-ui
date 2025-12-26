@@ -1,12 +1,14 @@
 "use client";
 
 import { useGetNearestEvent } from "@/queries/event/event";
+import { useAuth } from "@/hooks/useAuth";
 import { Calendar, ChevronDown, ChevronRight, Layers, Plus } from "lucide-react";
 import { useState } from "react";
 import ShowEvent from "./ShowEvent";
 import AddProgramInDay from "./day";
 
 export default function EventSidebar() {
+  const { isAdmin } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   const [openDay, setOpenDay] = useState<string | null>(null);
@@ -41,17 +43,21 @@ export default function EventSidebar() {
               >
                 <div className="flex items-center gap-2">
                   <Calendar size={18} className="text-bgPrimary" />
-                  <span className="font-medium flex  gap-35 justify-between text-gray-800">
+                  <span className="font-medium flex gap-35 justify-between text-gray-800">
                     {new Date(day.date).toLocaleDateString()}
-                    <div
-                      className="bg-bgPrimary/50 rounded-full"
-                      onClick={() => {
-                        setSelectedDayId(day._id);
-                        setShowDayModal(true);
-                      }}
-                    >
-                      <Plus />
-                    </div>
+                    {/* Admin-only add program button */}
+                    {isAdmin && (
+                      <div
+                        className="bg-bgPrimary/50 rounded-full cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDayId(day._id);
+                          setShowDayModal(true);
+                        }}
+                      >
+                        <Plus />
+                      </div>
+                    )}
                   </span>
                 </div>
                 {openDay === day._id ? (

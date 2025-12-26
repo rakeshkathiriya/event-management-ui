@@ -1,0 +1,40 @@
+'use client';
+
+import { useState } from 'react';
+import SendMessageModal from './SendMessageModal';
+
+export default function FloatingMessageButton() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  return (
+    <>
+      {/* Floating Button */}
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all hover:scale-110 z-40 flex items-center gap-2"
+        title="Send Message"
+      >
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+          />
+        </svg>
+        <span className="font-medium">Send Message</span>
+      </button>
+
+      {/* Modal */}
+      <SendMessageModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </>
+  );
+}
