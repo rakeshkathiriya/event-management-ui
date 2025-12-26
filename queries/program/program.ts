@@ -1,0 +1,34 @@
+import { api } from "@/utils/axiosFactory";
+import { handleErrorResponse } from "@/utils/helper";
+import { CommonNullResponse } from "@/utils/types/common";
+import { CreateProgramPayload } from "@/utils/types/program";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+export const useCreateProgram = () => {
+  return useMutation<CommonNullResponse, Error, CreateProgramPayload>({
+    mutationKey: ["useCreateProgram"],
+    mutationFn: async (payload: CreateProgramPayload) => {
+      try {
+        const response = await api.post<CommonNullResponse>("/program", payload);
+        return response.data;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          throw handleErrorResponse(error);
+        }
+        throw error;
+      }
+    },
+  });
+};
+
+export const useGetProgramById = (programId: string) => {
+  return useQuery({
+    queryKey: ["getProgramById", programId],
+    enabled: !!programId,
+    queryFn: async () => {
+      const res = await api.get(`/program/${programId}`);
+      return res.data.data.program; // ✅ FIXED
+    },
+  });
+};

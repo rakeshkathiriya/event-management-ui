@@ -1,8 +1,84 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --primary: #323c91;
+  --bodyBgColor: #f1f5f9;
+  --secondary: #333C4D;
 }
 
-@theme {}
+@theme {
+  --color-orange: #FF7A00;
+  --color-orangeLight: #FF9F40;
+  --color-blue: #0057FF;
+  --color-blueDark: #003EA8;
+  --color-white: #FFFFFF;
+  --color-offWhite: #F2F4F7;
+  --color-grayDark: #1A1A1A;
+
+  --color-bgDefault: #FFFFFF;
+  --color-bgPrimaryDark: #044241;
+  --color-bgPrimary: #2D6F6D;
+  --color-bgSoft: #F2F4F7;
+  --color-bgTable: #FAFAFA;
+  --color-bgTableCaption: #FF7A00;
+  --color-bgTableHeader: #0057FF;
+  --color-bgTableBody: #FAFAFA;
+
+  --color-textPrimary: #68788f;
+  --color-textSecondary: #4B5563;
+  --color-textMuted: #6B7280;
+  --color-textWhite: #FFFFFF;
+  --color-textTitlePrimary: #0057FF;
+  --color-textTitleSecondary: #FF7A00;
+
+  --color-borderLight: #E5E7EB;
+  --color-borderMedium: #CBD5E1;
+  --color-borderDark: #1A1A1A;
+
+  --color-popUpBg: #FFFFFF;
+  --color-popUpShadow: rgba(0, 0, 0, 0.15);
+  --color-popUpOverlay: #rgba(0, 0, 0, 0.45);
+
+  --color-success: "#22C55E";
+  --color-warning: "#FACC15";
+  --color-danger: "#EF4444";
+  --color-info: "#3B82F6";
+}
+
+
+.quill-wrapper .ql-editor {
+  min-height: 120px;
+  overflow: visible !important;
+  position: relative;
+  z-index: 9999 !important;
+}
+
+
+/* ===== Custom Scrollbar (Global) ===== */
+
+/* For Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #044241, #2d6f6d);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #056f6a, #3aa6a0);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2d6f6d transparent;
+}
