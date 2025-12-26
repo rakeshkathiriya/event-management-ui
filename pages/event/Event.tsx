@@ -4,6 +4,7 @@ import { useGetNearestEvent } from "@/queries/event/event";
 import { Calendar, ChevronDown, ChevronRight, Layers, Plus } from "lucide-react";
 import { useState } from "react";
 import ShowEvent from "./ShowEvent";
+import AddProgramInDay from "./day";
 
 export default function EventSidebar() {
   const [showModal, setShowModal] = useState(false);
@@ -12,7 +13,7 @@ export default function EventSidebar() {
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [showDayModal, setShowDayModal] = useState(false);
 
-  const { data, isLoading, isError } = useGetNearestEvent();
+  const { data, isLoading, isError, refetch } = useGetNearestEvent();
 
   if (isLoading) return <p className="p-6 text-gray-500">Loading events...</p>;
 
@@ -90,7 +91,11 @@ export default function EventSidebar() {
       )}
 
       {showDayModal && selectedDayId && (
-        <ShowEvent programId={selectedDayId} onClose={() => setShowModal(false)} />
+        <AddProgramInDay
+          dayId={selectedDayId}
+          onClose={() => setShowDayModal(false)}
+          refetchData={refetch}
+        />
       )}
     </>
   );

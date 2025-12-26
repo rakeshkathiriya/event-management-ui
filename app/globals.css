@@ -48,9 +48,7 @@
 
 .quill-wrapper .ql-editor {
   min-height: 120px;
-  overflow: visible !important;
-  position: relative;
-  z-index: 9999 !important;
+
 }
 
 
@@ -81,4 +79,77 @@
 * {
   scrollbar-width: thin;
   scrollbar-color: #2d6f6d transparent;
+}
+
+
+/* ===== Program Description Styles ===== */
+
+.program-description {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 8px;
+  color: #4b5563;
+  /* body text */
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+/* Headings */
+.program-description h1,
+.program-description h2,
+.program-description h3 {
+  color: #044241;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.program-description h1 {
+  font-size: 1.5rem;
+}
+
+.program-description h2 {
+  font-size: 1.25rem;
+}
+
+.program-description h3 {
+  font-size: 1.125rem;
+}
+
+/* Paragraph */
+.program-description p {
+  margin-bottom: 0.75rem;
+}
+
+/* Bold text */
+.program-description strong {
+  color: #044241;
+  font-weight: 600;
+}
+
+/* Lists */
+.program-description ul,
+.program-description ol {
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.program-description li {
+  margin-bottom: 0.4rem;
+}
+
+/* Links */
+.program-description a {
+  color: #2d6f6d;
+  text-decoration: underline;
+}
+
+/* Scrollbar (optional, matches your theme) */
+.program-description::-webkit-scrollbar {
+  width: 6px;
+}
+
+.program-description::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #044241, #2d6f6d);
+  border-radius: 999px;
 }

@@ -1,5 +1,7 @@
+// day.ts
+
 export interface AddProgramToDayPayload {
-  programId: string;
+  programIds: string[];
 }
 
 export interface AddProgramToDayParams {

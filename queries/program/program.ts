@@ -28,7 +28,17 @@ export const useGetProgramById = (programId: string) => {
     enabled: !!programId,
     queryFn: async () => {
       const res = await api.get(`/program/${programId}`);
-      return res.data.data.program; // ✅ FIXED
+      return res.data.data.program; // ✅ FIXEDAnd
+    },
+  });
+};
+
+export const useGetPrograms = () => {
+  return useQuery({
+    queryKey: ["getAllPrograms"],
+    queryFn: async () => {
+      const res = await api.get("/program");
+      return res.data;
     },
   });
 };

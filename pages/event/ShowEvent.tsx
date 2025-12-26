@@ -25,7 +25,7 @@ const ShowProgram = ({ programId, onClose }: ShowProgramProps) => {
   if (isError || !data) {
     return (
       <Modal onClose={onClose}>
-        <div className="text-center text-red-500 py-10">Failed to load program</div>
+        <div className="py-10 text-center text-red-500">Failed to load program</div>
       </Modal>
     );
   }
@@ -34,33 +34,42 @@ const ShowProgram = ({ programId, onClose }: ShowProgramProps) => {
 
   return (
     <Modal onClose={onClose}>
-      <div className="  rounded-xl p-6 w-full max-w-2xl ">
-        {/* Close */}
+      <div className="w-full max-w-3xl rounded-xl bg-white p-6 sm:p-8">
+        {/* Title */}
+        <h2 className="text-2xl sm:text-3xl font-semibold text-[#044241] mb-4">{program.title}</h2>
 
-        {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold text-[#044241]">{program.title}</h2>
-          <p className="mt-1 text-sm text-gray-600">{program.description}</p>
-        </div>
-
+        {/* Description (React-Quill HTML) */}
+        <div
+          className="program-description  prose prose-sm sm:prose-base max-w-none
+             prose-h3:text-lg prose-h3:font-semibold prose-h3:text-[#044241]
+             prose-p:text-gray-700
+             prose-strong:text-[#044241]
+             prose-ul:pl-5 prose-ol:pl-5
+             prose-li:marker:text-[#2D6F6D]
+             prose-a:text-[#2D6F6D] prose-a:underline
+             max-h-70 overflow-y-auto pr-2"
+          dangerouslySetInnerHTML={{ __html: program.description }}
+        />
         {/* Divider */}
-        <div className="h-[1px] bg-gray-200 mb-6" />
+        <div className="my-8 h-px bg-gray-200" />
 
         {/* Departments */}
         <div>
-          <h3 className="text-sm font-semibold text-[#2D6F6D] mb-3">Assigned Departments</h3>
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#2D6F6D]">
+            Assigned Departments
+          </h3>
 
           {program.departments.length === 0 ? (
             <p className="text-sm text-gray-500">No departments assigned</p>
           ) : (
             <div className="flex flex-wrap gap-3">
               {program.departments.map((dept: Department) => (
-                <div
+                <span
                   key={dept._id}
-                  className="px-4 py-2 rounded-full bg-[#E6F2F1] text-[#044241] text-sm font-medium shadow-sm"
+                  className="rounded-full bg-[#E6F2F1] px-4 py-2 text-sm font-medium text-[#044241]"
                 >
                   {dept.name}
-                </div>
+                </span>
               ))}
             </div>
           )}
