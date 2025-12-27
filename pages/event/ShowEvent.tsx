@@ -1,8 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Modal from "@/components/Model";
 import { useGetProgramById } from "@/queries/program/program";
 import { Department } from "@/utils/types/department";
+import { useAuth } from "@/hooks/useAuth";
+import RequestUpdateDialog from "@/components/ProgramUpdateRequest/RequestUpdateDialog";
+import { useGetMyUpdateRequests } from "@/queries/programUpdateRequest/programUpdateRequest";
+import { Edit } from "lucide-react";
 
 interface ShowProgramProps {
   programId: string;
@@ -11,6 +16,9 @@ interface ShowProgramProps {
 
 const ShowProgram = ({ programId, onClose }: ShowProgramProps) => {
   const { data, isLoading, isError } = useGetProgramById(programId);
+  const { isUser, isAdmin } = useAuth();
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const { data: myRequests } = useGetMyUpdateRequests();
 
   if (isLoading) {
     return (
@@ -32,11 +40,42 @@ const ShowProgram = ({ programId, onClose }: ShowProgramProps) => {
 
   const program = data;
 
+  // Find pending request for this program
+  const pendingRequest = myRequests?.find(
+    (req) =>
+      (typeof req.programId === 'object' ? req.programId._id : req.programId) === programId &&
+      req.status === 'pending'
+  );
+
   return (
     <Modal onClose={onClose}>
       <div className="w-full max-w-3xl rounded-xl bg-white p-6 sm:p-8">
         {/* Title */}
-        <h2 className="text-2xl sm:text-3xl font-semibold text-[#044241] mb-4">{program.title}</h2>
+        <div className="flex items-start justify-between mb-4">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-[#044241]">{program.title}</h2>
+
+          {/* Request Update Button (USER only) */}
+          {isUser && !isAdmin && (
+            <button
+              onClick={() => setShowRequestDialog(true)}
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+              style={{ background: "linear-gradient(135deg, #044241 0%, #2D6F6D 100%)" }}
+              disabled={!!pendingRequest}
+            >
+              <Edit size={16} />
+              {pendingRequest ? "Request Pending" : "Request Update"}
+            </button>
+          )}
+        </div>
+
+        {/* Pending Request Notice */}
+        {pendingRequest && (
+          <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+            <p className="text-sm text-yellow-800">
+              You have a pending update request for this program. It is awaiting admin review.
+            </p>
+          </div>
+        )}
 
         {/* Description (React-Quill HTML) */}
         <div
@@ -68,6 +107,16 @@ const ShowProgram = ({ programId, onClose }: ShowProgramProps) => {
           )}
         </div>
       </div>
+
+      {/* Request Update Dialog */}
+      {showRequestDialog && (
+        <RequestUpdateDialog
+          programId={programId}
+          programTitle={program.title}
+          currentDescription={program.description || ""}
+          onClose={() => setShowRequestDialog(false)}
+        />
+      )}
     </Modal>
   );
 };
