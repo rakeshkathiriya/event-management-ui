@@ -1,11 +1,75 @@
 "use client";
 
 import { useGetNearestEvent } from "@/queries/event/event";
+import { useReorderProgramsInDay } from "@/queries/day/day";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, ChevronDown, ChevronRight, Layers, Plus } from "lucide-react";
+import { Calendar, ChevronDown, ChevronRight, Layers, Plus, GripVertical } from "lucide-react";
 import { useState } from "react";
 import ShowEvent from "./ShowEvent";
 import AddProgramInDay from "./day";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+interface SortableProgramProps {
+  program: {
+    _id: string;
+    title: string;
+  };
+  onClick: () => void;
+  isAdmin: boolean;
+}
+
+function SortableProgram({ program, onClick, isAdmin }: SortableProgramProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: program._id,
+    disabled: !isAdmin,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="w-full flex items-center gap-3 rounded-lg bg-white border px-3 py-2 hover:shadow-md transition"
+    >
+      {isAdmin && (
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
+        >
+          <GripVertical className="w-4 h-4 text-gray-400" />
+        </div>
+      )}
+      <button onClick={onClick} className="flex-1 flex items-center gap-3 text-left">
+        <div className="p-2 rounded-full bg-[#2D6F6D]/10">
+          <Layers className="w-4 h-4 text-[#2D6F6D]" />
+        </div>
+        <span className="text-sm font-medium text-gray-800">{program.title}</span>
+      </button>
+    </div>
+  );
+}
 
 export default function EventSidebar() {
   const { isAdmin } = useAuth();
@@ -16,6 +80,54 @@ export default function EventSidebar() {
   const [showDayModal, setShowDayModal] = useState(false);
 
   const { data, isLoading, isError, refetch } = useGetNearestEvent();
+  const reorderMutation = useReorderProgramsInDay();
+
+  // Configure drag sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required to start drag
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end
+  const handleDragEnd = (event: DragEndEvent, dayId: string, programs: any[]) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = programs.findIndex((p) => p._id === active.id);
+    const newIndex = programs.findIndex((p) => p._id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Reorder locally
+    const reorderedPrograms = arrayMove(programs, oldIndex, newIndex);
+    const programIds = reorderedPrograms.map((p) => p._id);
+
+    // Call backend API
+    reorderMutation.mutate(
+      {
+        dayId,
+        payload: { programIds },
+      },
+      {
+        onSuccess: () => {
+          // Refetch to ensure sync with server
+          refetch();
+        },
+        onError: (error) => {
+          console.error("Failed to reorder programs:", error);
+          // Refetch to revert optimistic update
+          refetch();
+        },
+      }
+    );
+  };
 
   if (isLoading) return <p className="p-6 text-gray-500">Loading events...</p>;
 
@@ -70,21 +182,28 @@ export default function EventSidebar() {
               {/* Programs */}
               {openDay === day._id && (
                 <div className="bg-[#F6FAF9] px-4 py-3 space-y-2">
-                  {day.programs.map((program) => (
-                    <button
-                      key={program._id}
-                      onClick={() => {
-                        setSelectedProgramId(program._id);
-                        setShowModal(true);
-                      }}
-                      className="w-full flex items-center gap-3 rounded-lg bg-white border px-3 py-2 hover:shadow-md transition"
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={(event) => handleDragEnd(event, day._id, day.programs)}
+                  >
+                    <SortableContext
+                      items={day.programs.map((p) => p._id)}
+                      strategy={verticalListSortingStrategy}
                     >
-                      <div className="p-2 rounded-full bg-[#2D6F6D]/10">
-                        <Layers className="w-4 h-4 text-[#2D6F6D]" />
-                      </div>
-                      <span className="text-sm font-medium text-gray-800">{program.title}</span>
-                    </button>
-                  ))}
+                      {day.programs.map((program) => (
+                        <SortableProgram
+                          key={program._id}
+                          program={program}
+                          onClick={() => {
+                            setSelectedProgramId(program._id);
+                            setShowModal(true);
+                          }}
+                          isAdmin={isAdmin}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 </div>
               )}
             </div>
