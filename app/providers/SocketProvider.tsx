@@ -8,11 +8,13 @@ import toast from 'react-hot-toast';
 interface SocketContextType {
   socket: Socket | null;
   isConnected: boolean;
+  reconnect: () => void;
 }
 
 const SocketContext = createContext<SocketContextType>({
   socket: null,
   isConnected: false,
+  reconnect: () => {},
 });
 
 interface SocketProviderProps {
@@ -22,18 +24,59 @@ interface SocketProviderProps {
 export const SocketProvider = ({ children }: SocketProviderProps) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [tokenState, setTokenState] = useState<string | null>(null);
 
+  // Check token periodically to detect login/logout
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      console.log('No token found, skipping socket connection');
+    const checkToken = () => {
+      const currentToken = getToken();
+      setTokenState(currentToken);
+    };
+
+    // Initial check
+    checkToken();
+
+    // Check token every 1 second to detect changes
+    const interval = setInterval(checkToken, 1000);
+
+    // Also listen for storage events (for multi-tab sync)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'accessToken') {
+        checkToken();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Socket connection effect - runs when token changes
+  useEffect(() => {
+    // Cleanup previous socket if it exists
+    if (socket) {
+      console.log('🔄 Cleaning up previous socket connection');
+      socket.removeAllListeners();
+      socket.disconnect();
+      setSocket(null);
+      setIsConnected(false);
+    }
+
+    // If no token, don't connect
+    if (!tokenState) {
+      console.log('❌ No token found, socket will not connect');
       return;
     }
+
+    console.log('🔌 Token detected, initializing socket connection...');
 
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
     const socketInstance = io(backendUrl, {
-      auth: { token },
+      auth: { token: tokenState },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -42,41 +85,48 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
     });
 
     socketInstance.on('connect', () => {
-      console.log('Socket connected:', socketInstance.id);
+      console.log('✅ Socket connected:', socketInstance.id);
       setIsConnected(true);
       toast.success('Connected to real-time messaging');
     });
 
-    socketInstance.on('disconnect', () => {
-      console.log('Socket disconnected');
+    socketInstance.on('disconnect', (reason) => {
+      console.log('❌ Socket disconnected:', reason);
       setIsConnected(false);
     });
 
     socketInstance.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+      console.error('❌ Socket connection error:', error.message);
       setIsConnected(false);
     });
 
     socketInstance.on('reconnect', (attemptNumber) => {
-      console.log(`Reconnected after ${attemptNumber} attempts`);
+      console.log(`✅ Reconnected after ${attemptNumber} attempts`);
       toast.success('Reconnected to messaging');
     });
 
     socketInstance.on('reconnect_failed', () => {
-      console.error('Failed to reconnect to socket server');
+      console.error('❌ Failed to reconnect to socket server');
       toast.error('Failed to connect to real-time messaging');
     });
 
     setSocket(socketInstance);
 
     return () => {
-      console.log('Disconnecting socket');
+      console.log('🧹 Cleaning up socket on unmount');
+      socketInstance.removeAllListeners();
       socketInstance.disconnect();
     };
-  }, []);
+  }, [tokenState]); // Re-run when token changes
+
+  // Manual reconnect function
+  const reconnect = () => {
+    const currentToken = getToken();
+    setTokenState(currentToken);
+  };
 
   return (
-    <SocketContext.Provider value={{ socket, isConnected }}>
+    <SocketContext.Provider value={{ socket, isConnected, reconnect }}>
       {children}
     </SocketContext.Provider>
   );

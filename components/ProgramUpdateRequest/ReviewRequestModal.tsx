@@ -61,21 +61,21 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
   const changeIndicator = getChangeIndicator(changeType);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="relative w-full max-w-7xl rounded-lg bg-white shadow-2xl max-h-[95vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b px-6 py-4 bg-gray-50">
-          <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+      <div className="relative w-full max-w-7xl rounded-lg bg-white shadow-2xl my-8 flex flex-col" style={{ maxHeight: "calc(100vh - 4rem)" }}>
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between border-b px-6 py-4 bg-gray-50 flex-shrink-0">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-semibold text-gray-800 truncate">
               Review Update Request
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 mt-1 truncate">
               Program: {typeof request.programId === "object" ? request.programId.title : "Unknown Program"}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 hover:bg-gray-200 transition"
+            className="rounded-full p-2 hover:bg-gray-200 transition flex-shrink-0 ml-4"
             disabled={isApproving || isRejecting}
             aria-label="Close modal"
           >
@@ -83,19 +83,19 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
           </button>
         </div>
 
-        {/* Request Info */}
-        <div className="border-b px-6 py-3 bg-gray-50">
+        {/* Request Info - Fixed */}
+        <div className="border-b px-6 py-3 bg-gray-50 flex-shrink-0 overflow-x-auto">
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-            <span>
+            <span className="whitespace-nowrap">
               Requested by:{" "}
               <span className="font-medium text-gray-800">{request.requestedByName}</span>
             </span>
             <span className="hidden sm:inline">•</span>
-            <span>
+            <span className="whitespace-nowrap">
               {format(new Date(request.createdAt), "MMM dd, yyyy 'at' hh:mm a")}
             </span>
             <span className="hidden sm:inline">•</span>
-            <span>
+            <span className="whitespace-nowrap">
               Status:{" "}
               <span
                 className={`font-medium ${
@@ -115,7 +115,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
               <>
                 <span className="hidden sm:inline">•</span>
                 <span
-                  className="flex items-center gap-1 font-medium"
+                  className="flex items-center gap-1 font-medium whitespace-nowrap"
                   style={{ color: changeIndicator.color }}
                 >
                   <span>{changeIndicator.icon}</span>
@@ -126,20 +126,24 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
           </div>
         </div>
 
-        {/* Side-by-side Comparison */}
-        <div className="flex-1 overflow-hidden">
+        {/* Side-by-side Comparison - Scrollable */}
+        <div className="flex-1 overflow-hidden min-h-0">
           <div className="grid grid-cols-1 md:grid-cols-2 h-full">
             {/* Current Description (with deletions highlighted) */}
-            <div className="border-b md:border-b-0 md:border-r overflow-y-auto">
-              <div className="sticky top-0 bg-gray-100 border-b px-6 py-3 z-10">
+            <div className="border-b md:border-b-0 md:border-r flex flex-col h-full overflow-hidden">
+              <div className="sticky top-0 bg-gray-100 border-b px-6 py-3 z-10 flex-shrink-0">
                 <h3 className="font-semibold text-gray-800">Current Description</h3>
                 <p className="text-xs text-gray-500 mt-1">
                   Red strikethrough = content removed by user
                 </p>
               </div>
-              <div className="px-6 py-4">
+              <div className="px-6 py-4 overflow-y-auto overflow-x-hidden flex-1">
                 <div
-                  className="prose prose-sm max-w-none"
+                  className="prose prose-sm max-w-none break-words"
+                  style={{
+                    wordWrap: "break-word",
+                    overflowWrap: "break-word",
+                  }}
                   dangerouslySetInnerHTML={{
                     __html:
                       currentWithDeletions ||
@@ -150,16 +154,20 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
             </div>
 
             {/* Requested Description (with additions highlighted) */}
-            <div className="overflow-y-auto">
-              <div className="sticky top-0 bg-green-50 border-b border-green-200 px-6 py-3 z-10">
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="sticky top-0 bg-green-50 border-b border-green-200 px-6 py-3 z-10 flex-shrink-0">
                 <h3 className="font-semibold text-green-800">Requested Description</h3>
                 <p className="text-xs text-green-700 mt-1">
                   Green highlight = new or changed content
                 </p>
               </div>
-              <div className="px-6 py-4">
+              <div className="px-6 py-4 overflow-y-auto overflow-x-hidden flex-1">
                 <div
-                  className="prose prose-sm max-w-none"
+                  className="prose prose-sm max-w-none break-words"
+                  style={{
+                    wordWrap: "break-word",
+                    overflowWrap: "break-word",
+                  }}
                   dangerouslySetInnerHTML={{
                     __html:
                       highlightedHtml ||
@@ -171,16 +179,16 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
           </div>
         </div>
 
-        {/* Rejection Form (if showing) */}
+        {/* Rejection Form (if showing) - Fixed */}
         {showRejectForm && isPending && (
-          <div className="border-t px-6 py-4 bg-red-50">
+          <div className="border-t px-6 py-4 bg-red-50 flex-shrink-0">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Rejection Reason <span className="text-red-500">*</span>
             </label>
             <textarea
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
               rows={3}
               placeholder="Explain why this request is being rejected..."
               disabled={isRejecting}
@@ -188,8 +196,8 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
           </div>
         )}
 
-        {/* Footer */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t px-6 py-4 bg-gray-50">
+        {/* Footer - Fixed */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t px-6 py-4 bg-gray-50 flex-shrink-0">
           <button
             onClick={onClose}
             className="rounded-lg border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-white transition order-2 sm:order-1"

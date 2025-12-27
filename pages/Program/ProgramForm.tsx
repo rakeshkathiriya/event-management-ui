@@ -5,13 +5,13 @@ import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
 
+import DescriptionModal from "@/components/common/DescriptionModal";
 import Modal from "@/components/Model";
 import { useGetDepartments } from "@/queries/department/department";
 import { useCreateProgram } from "@/queries/program/program";
 import { programSchema } from "@/utils/validationSchema/programSchema";
-import DescriptionModal from "@/components/common/DescriptionModal";
 
-import { X, Eye } from "lucide-react";
+import { Eye, X } from "lucide-react";
 import "quill/dist/quill.snow.css";
 
 // React Quill (React 18 compatible)
@@ -75,14 +75,14 @@ const CreateProgramForm = ({ onCancel, refetchData }: CreateProgramFormProps) =>
   const { values, errors, touched, handleChange, handleSubmit, setFieldValue } = formik;
 
   // Get selected departments for preview
-  const selectedDepartments = departments.filter((dept) =>
-    values.departmentIds.includes(dept._id)
-  );
+  const selectedDepartments = departments.filter((dept) => values.departmentIds.includes(dept._id));
 
   return (
     <>
       <Modal onClose={onCancel} isLoading={isPending}>
-        <h3 className="mb-6 text-center text-xl font-semibold text-bgPrimaryDark">Create Program</h3>
+        <h3 className="mb-6 text-center text-xl font-semibold text-bgPrimaryDark">
+          Create Program
+        </h3>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Program Title */}
@@ -184,7 +184,9 @@ const CreateProgramForm = ({ onCancel, refetchData }: CreateProgramFormProps) =>
                 })}
               </div>
 
-              <p className="text-xs text-red-500">{touched.departmentIds && errors.departmentIds}</p>
+              <p className="text-xs text-red-500">
+                {touched.departmentIds && errors.departmentIds}
+              </p>
             </div>
           </div>
 
