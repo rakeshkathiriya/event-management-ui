@@ -1,17 +1,37 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 import { useGetAllUsers } from "@/queries/user/user";
 import type { User as UserType } from "@/utils/types/user";
+import { useAuth } from "@/hooks/useAuth";
 import UserRegistrationForm from "./UserCreationForm";
 
 const User = () => {
+  const router = useRouter();
+  const { isAdmin, isLoading: authLoading } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
   const { data, isLoading, error, refetch } = useGetAllUsers();
 
   const users: UserType[] = data?.data?.users ?? [];
+
+  // Redirect non-admin users
+  useEffect(() => {
+    if (!authLoading && !isAdmin) {
+      router.replace("/main/programs");
+    }
+  }, [isAdmin, authLoading, router]);
+
+  // Show loading while checking permissions
+  if (authLoading || !isAdmin) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 p-6 md:p-10">

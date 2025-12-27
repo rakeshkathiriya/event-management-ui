@@ -1,24 +1,30 @@
 "use client";
 
 import Header from "@/components/common/Header";
-import { getToken } from "@/utils/helper";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import NotificationSidebar from "@/components/common/NotificationSidebar";
+import FloatingMessageButton from "@/components/common/FloatingMessageButton";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const { isLoading } = useAuth();
 
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      router.replace("/auth/login");
-    }
-  }, [router]);
+  // Show nothing while checking auth - prevents UI flicker
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
   return (
-    <>
+    <div className="relative">
       <Header />
-      {children}
-    </>
+      <div className="mr-80 pt-16">
+        {children}
+      </div>
+      <NotificationSidebar />
+      <FloatingMessageButton />
+    </div>
   );
 }
