@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Modal from "@/components/Model";
 import { useGetProgramById } from "@/queries/program/program";
-import { Department } from "@/utils/types/department";
 import { useAuth } from "@/hooks/useAuth";
 import RequestUpdateDialog from "@/components/ProgramUpdateRequest/RequestUpdateDialog";
 import { useGetMyUpdateRequests } from "@/queries/programUpdateRequest/programUpdateRequest";
+import DescriptionModal from "@/components/common/DescriptionModal";
 import { Edit } from "lucide-react";
 
 interface ShowProgramProps {
@@ -22,19 +21,24 @@ const ShowProgram = ({ programId, onClose }: ShowProgramProps) => {
 
   if (isLoading) {
     return (
-      <Modal onClose={onClose}>
-        <div className="flex items-center justify-center py-10 text-gray-600">
-          Loading program...
-        </div>
-      </Modal>
+      <DescriptionModal
+        title="Loading..."
+        description="<p class='text-gray-600'>Loading program details...</p>"
+        onClose={onClose}
+        isLoading={true}
+        maxWidth="4xl"
+      />
     );
   }
 
   if (isError || !data) {
     return (
-      <Modal onClose={onClose}>
-        <div className="py-10 text-center text-red-500">Failed to load program</div>
-      </Modal>
+      <DescriptionModal
+        title="Error"
+        description="<p class='text-red-500'>Failed to load program details. Please try again.</p>"
+        onClose={onClose}
+        maxWidth="4xl"
+      />
     );
   }
 
@@ -43,70 +47,48 @@ const ShowProgram = ({ programId, onClose }: ShowProgramProps) => {
   // Find pending request for this program
   const pendingRequest = myRequests?.find(
     (req) =>
-      (typeof req.programId === 'object' ? req.programId._id : req.programId) === programId &&
-      req.status === 'pending'
+      (typeof req.programId === "object" ? req.programId._id : req.programId) === programId &&
+      req.status === "pending"
+  );
+
+  // Footer with Request Update button (for users only)
+  const footer = (
+    <div className="space-y-4">
+      {/* Pending Request Notice */}
+      {pendingRequest && (
+        <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+          <p className="text-sm text-yellow-800">
+            You have a pending update request for this program. It is awaiting admin review.
+          </p>
+        </div>
+      )}
+
+      {/* Request Update Button (USER only) */}
+      {isUser && !isAdmin && (
+        <button
+          onClick={() => setShowRequestDialog(true)}
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ background: "linear-gradient(135deg, #044241 0%, #2D6F6D 100%)" }}
+          disabled={!!pendingRequest}
+        >
+          <Edit size={16} />
+          {pendingRequest ? "Request Pending" : "Request Update"}
+        </button>
+      )}
+    </div>
   );
 
   return (
-    <Modal onClose={onClose}>
-      <div className="w-full max-w-3xl rounded-xl bg-white p-6 sm:p-8">
-        {/* Title */}
-        <div className="flex items-start justify-between mb-4">
-          <h2 className="text-2xl sm:text-3xl font-semibold text-[#044241]">{program.title}</h2>
-
-          {/* Request Update Button (USER only) */}
-          {isUser && !isAdmin && (
-            <button
-              onClick={() => setShowRequestDialog(true)}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-              style={{ background: "linear-gradient(135deg, #044241 0%, #2D6F6D 100%)" }}
-              disabled={!!pendingRequest}
-            >
-              <Edit size={16} />
-              {pendingRequest ? "Request Pending" : "Request Update"}
-            </button>
-          )}
-        </div>
-
-        {/* Pending Request Notice */}
-        {pendingRequest && (
-          <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
-            <p className="text-sm text-yellow-800">
-              You have a pending update request for this program. It is awaiting admin review.
-            </p>
-          </div>
-        )}
-
-        {/* Description (React-Quill HTML) */}
-        <div
-          className="program-description"
-          dangerouslySetInnerHTML={{ __html: program.description }}
-        />
-        {/* Divider */}
-        <div className="my-8 h-px bg-gray-200" />
-
-        {/* Departments */}
-        <div>
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#2D6F6D]">
-            Assigned Departments
-          </h3>
-
-          {program.departments.length === 0 ? (
-            <p className="text-sm text-gray-500">No departments assigned</p>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              {program.departments.map((dept: Department) => (
-                <span
-                  key={dept._id}
-                  className="rounded-full bg-[#E6F2F1] px-4 py-2 text-sm font-medium text-[#044241]"
-                >
-                  {dept.name}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+    <>
+      {/* Description Modal - Direct usage with proper scrolling */}
+      <DescriptionModal
+        title={program.title}
+        description={program.description || "<p class='text-gray-400 italic'>No description available</p>"}
+        departments={program.departments}
+        footer={isUser && !isAdmin ? footer : undefined}
+        onClose={onClose}
+        maxWidth="4xl"
+      />
 
       {/* Request Update Dialog */}
       {showRequestDialog && (
@@ -117,7 +99,7 @@ const ShowProgram = ({ programId, onClose }: ShowProgramProps) => {
           onClose={() => setShowRequestDialog(false)}
         />
       )}
-    </Modal>
+    </>
   );
 };
 

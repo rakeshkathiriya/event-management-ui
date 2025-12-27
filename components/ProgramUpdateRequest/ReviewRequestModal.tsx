@@ -1,9 +1,10 @@
 "use client";
 
-import { X, CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, X } from "lucide-react";
 import { useState } from "react";
 import { ProgramUpdateRequest } from "@/queries/programUpdateRequest/programUpdateRequest";
 import { format } from "date-fns";
+import { highlightChanges, showDeletions, getChangeIndicator } from "@/utils/diffHighlight";
 
 interface ReviewRequestModalProps {
   request: ProgramUpdateRequest;
@@ -14,6 +15,16 @@ interface ReviewRequestModalProps {
   isRejecting: boolean;
 }
 
+/**
+ * Admin Review Modal - Side-by-side comparison with diff highlighting
+ *
+ * Features:
+ * - Shows current vs requested descriptions side-by-side
+ * - Highlights ONLY changed/added content in light green
+ * - Shows deleted content with strikethrough in current description
+ * - Fully responsive (stacked on mobile)
+ * - Approve/Reject actions with rejection reason
+ */
 const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
   request,
   onClose,
@@ -35,23 +46,38 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
 
   const isPending = request.status === "pending";
 
+  // Apply smart diff highlighting
+  const { highlightedHtml, hasChanges, changeType } = highlightChanges(
+    request.currentDescriptionSnapshot || "",
+    request.requestedDescription || ""
+  );
+
+  // Show deletions in current description
+  const currentWithDeletions = showDeletions(
+    request.currentDescriptionSnapshot || "",
+    request.requestedDescription || ""
+  );
+
+  const changeIndicator = getChangeIndicator(changeType);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="relative w-full max-w-7xl rounded-lg bg-white shadow-2xl max-h-[95vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4 bg-gray-50">
-          <div>
+          <div className="flex-1">
             <h2 className="text-xl font-semibold text-gray-800">
               Review Update Request
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              Program: {typeof request.programId === 'object' ? request.programId.title : 'Unknown Program'}
+              Program: {typeof request.programId === "object" ? request.programId.title : "Unknown Program"}
             </p>
           </div>
           <button
             onClick={onClose}
             className="rounded-full p-2 hover:bg-gray-200 transition"
             disabled={isApproving || isRejecting}
+            aria-label="Close modal"
           >
             <X size={20} />
           </button>
@@ -59,58 +85,85 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
 
         {/* Request Info */}
         <div className="border-b px-6 py-3 bg-gray-50">
-          <div className="flex items-center gap-6 text-sm text-gray-600">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
             <span>
               Requested by:{" "}
               <span className="font-medium text-gray-800">{request.requestedByName}</span>
             </span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span>
               {format(new Date(request.createdAt), "MMM dd, yyyy 'at' hh:mm a")}
             </span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span>
               Status:{" "}
-              <span className={`font-medium ${
-                request.status === "pending" ? "text-yellow-600" :
-                request.status === "approved" ? "text-green-600" :
-                request.status === "rejected" ? "text-red-600" :
-                "text-gray-600"
-              }`}>
+              <span
+                className={`font-medium ${
+                  request.status === "pending"
+                    ? "text-yellow-600"
+                    : request.status === "approved"
+                    ? "text-green-600"
+                    : request.status === "rejected"
+                    ? "text-red-600"
+                    : "text-gray-600"
+                }`}
+              >
                 {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
               </span>
             </span>
+            {hasChanges && (
+              <>
+                <span className="hidden sm:inline">•</span>
+                <span
+                  className="flex items-center gap-1 font-medium"
+                  style={{ color: changeIndicator.color }}
+                >
+                  <span>{changeIndicator.icon}</span>
+                  {changeIndicator.message}
+                </span>
+              </>
+            )}
           </div>
         </div>
 
         {/* Side-by-side Comparison */}
         <div className="flex-1 overflow-hidden">
-          <div className="grid grid-cols-2 h-full">
-            {/* Current Description */}
-            <div className="border-r overflow-y-auto">
-              <div className="sticky top-0 bg-gray-100 border-b px-6 py-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 h-full">
+            {/* Current Description (with deletions highlighted) */}
+            <div className="border-b md:border-b-0 md:border-r overflow-y-auto">
+              <div className="sticky top-0 bg-gray-100 border-b px-6 py-3 z-10">
                 <h3 className="font-semibold text-gray-800">Current Description</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Red strikethrough = content removed by user
+                </p>
               </div>
               <div className="px-6 py-4">
                 <div
                   className="prose prose-sm max-w-none"
                   dangerouslySetInnerHTML={{
-                    __html: request.currentDescriptionSnapshot || "<p class='text-gray-400 italic'>No description</p>",
+                    __html:
+                      currentWithDeletions ||
+                      "<p class='text-gray-400 italic'>No description</p>",
                   }}
                 />
               </div>
             </div>
 
-            {/* Requested Description */}
+            {/* Requested Description (with additions highlighted) */}
             <div className="overflow-y-auto">
-              <div className="sticky top-0 bg-green-50 border-b border-green-200 px-6 py-3">
+              <div className="sticky top-0 bg-green-50 border-b border-green-200 px-6 py-3 z-10">
                 <h3 className="font-semibold text-green-800">Requested Description</h3>
+                <p className="text-xs text-green-700 mt-1">
+                  Green highlight = new or changed content
+                </p>
               </div>
               <div className="px-6 py-4">
                 <div
                   className="prose prose-sm max-w-none"
                   dangerouslySetInnerHTML={{
-                    __html: request.requestedDescription || "<p class='text-gray-400 italic'>No description</p>",
+                    __html:
+                      highlightedHtml ||
+                      "<p class='text-gray-400 italic'>No description</p>",
                   }}
                 />
               </div>
@@ -136,17 +189,17 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t px-6 py-4 bg-gray-50">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t px-6 py-4 bg-gray-50">
           <button
             onClick={onClose}
-            className="rounded-lg border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-white transition"
+            className="rounded-lg border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-white transition order-2 sm:order-1"
             disabled={isApproving || isRejecting}
           >
             Close
           </button>
 
           {isPending && (
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 order-1 sm:order-2">
               {showRejectForm ? (
                 <>
                   <button
@@ -162,7 +215,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                   <button
                     onClick={handleReject}
                     disabled={isRejecting || !rejectionReason.trim()}
-                    className="rounded-lg px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="rounded-lg px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <XCircle size={16} />
                     {isRejecting ? "Rejecting..." : "Confirm Rejection"}
@@ -173,7 +226,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                   <button
                     onClick={() => setShowRejectForm(true)}
                     disabled={isApproving || isRejecting}
-                    className="rounded-lg px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="rounded-lg px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <XCircle size={16} />
                     Reject
@@ -181,7 +234,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                   <button
                     onClick={() => onApprove(request._id)}
                     disabled={isApproving || isRejecting}
-                    className="rounded-lg px-5 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="rounded-lg px-5 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <CheckCircle size={16} />
                     {isApproving ? "Approving..." : "Approve"}
