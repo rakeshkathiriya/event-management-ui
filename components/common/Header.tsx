@@ -52,9 +52,14 @@ const Header = () => {
 
           {/* USER-only navigation */}
           {isUser && (
-            <Link href="/main/my-assignments" className="text-white text-md hover:opacity-80">
-              My Assignments
-            </Link>
+            <>
+              <Link href="/main/my-assignments" className="text-white text-md hover:opacity-80">
+                My Assignments
+              </Link>
+              <Link href="/main/program-requests" className="text-white text-md hover:opacity-80">
+                My Requests
+              </Link>
+            </>
           )}
 
           {/* Admin-only navigation */}
@@ -65,6 +70,9 @@ const Header = () => {
               </Link>
               <Link href="/main/user" className="text-white text-md hover:opacity-80">
                 User
+              </Link>
+              <Link href="/main/program-requests" className="text-white text-md hover:opacity-80">
+                Update Requests
               </Link>
             </>
           )}
