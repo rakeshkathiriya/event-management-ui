@@ -1,11 +1,7 @@
 import Program from "@/pages/Program/Program";
 
 const Page = () => {
-  return (
-    <>
-      <Program />
-    </>
-  );
+  return <Program />;
 };
 
 export default Page;

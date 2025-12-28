@@ -37,7 +37,6 @@ const Modal = ({ children, onClose, isLoading = false }: ModalProps) => {
           bg-bgPrimaryDark/70
           backdrop-blur-sm
         "
-        onClick={!isLoading ? onClose : undefined}
       >
         {/* ===== MODAL ===== */}
         <motion.div

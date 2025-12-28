@@ -1,10 +1,10 @@
 "use client";
 
-import { CheckCircle, XCircle, X } from "lucide-react";
-import { useState } from "react";
 import { ProgramUpdateRequest } from "@/queries/programUpdateRequest/programUpdateRequest";
+import { getChangeIndicator, highlightChanges, showDeletions } from "@/utils/diffHighlight";
 import { format } from "date-fns";
-import { highlightChanges, showDeletions, getChangeIndicator } from "@/utils/diffHighlight";
+import { CheckCircle, X, XCircle } from "lucide-react";
+import { useState } from "react";
 
 interface ReviewRequestModalProps {
   request: ProgramUpdateRequest;
@@ -62,15 +62,17 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
-      <div className="relative w-full max-w-7xl rounded-lg bg-white shadow-2xl my-8 flex flex-col" style={{ maxHeight: "calc(100vh - 4rem)" }}>
+      <div
+        className="relative w-full max-w-7xl rounded-lg bg-white shadow-2xl my-8 flex flex-col"
+        style={{ maxHeight: "calc(100vh - 4rem)" }}
+      >
         {/* Header - Fixed */}
         <div className="flex items-center justify-between border-b px-6 py-4 bg-gray-50 flex-shrink-0">
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-semibold text-gray-800 truncate">
-              Review Update Request
-            </h2>
+            <h2 className="text-xl font-semibold text-gray-800 truncate">Review Update Request</h2>
             <p className="text-sm text-gray-600 mt-1 truncate">
-              Program: {typeof request.programId === "object" ? request.programId.title : "Unknown Program"}
+              Program:{" "}
+              {typeof request.programId === "object" ? request.programId.title : "Unknown Program"}
             </p>
           </div>
           <button
@@ -127,7 +129,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
         </div>
 
         {/* Side-by-side Comparison - Scrollable */}
-        <div className="flex-1 overflow-hidden min-h-0">
+        <div className="flex-1 overflow-scroll min-h-0">
           <div className="grid grid-cols-1 md:grid-cols-2 h-full">
             {/* Current Description (with deletions highlighted) */}
             <div className="border-b md:border-b-0 md:border-r flex flex-col h-full overflow-hidden">
@@ -146,8 +148,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                   }}
                   dangerouslySetInnerHTML={{
                     __html:
-                      currentWithDeletions ||
-                      "<p class='text-gray-400 italic'>No description</p>",
+                      currentWithDeletions || "<p class='text-gray-400 italic'>No description</p>",
                   }}
                 />
               </div>
@@ -169,9 +170,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                     overflowWrap: "break-word",
                   }}
                   dangerouslySetInnerHTML={{
-                    __html:
-                      highlightedHtml ||
-                      "<p class='text-gray-400 italic'>No description</p>",
+                    __html: highlightedHtml || "<p class='text-gray-400 italic'>No description</p>",
                   }}
                 />
               </div>
