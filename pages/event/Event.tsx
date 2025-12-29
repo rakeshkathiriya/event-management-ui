@@ -1,20 +1,16 @@
 "use client";
 
-import { useGetNearestEvent } from "@/queries/event/event";
-import { useReorderProgramsInDay } from "@/queries/day/day";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, ChevronDown, ChevronRight, Layers, Plus, GripVertical } from "lucide-react";
-import { useState } from "react";
-import ShowEvent from "./ShowEvent";
-import AddProgramInDay from "./day";
+import { useReorderProgramsInDay } from "@/queries/day/day";
+import { useGetNearestEvent } from "@/queries/event/event";
 import {
-  DndContext,
   closestCenter,
+  DndContext,
+  DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -24,6 +20,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Calendar, ChevronDown, ChevronRight, GripVertical, Layers, Plus } from "lucide-react";
+import { useState } from "react";
+import ShowEvent from "./ShowEvent";
+import AddProgramInDay from "./day";
 
 interface SortableProgramProps {
   program: {
