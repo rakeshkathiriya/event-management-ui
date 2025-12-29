@@ -27,3 +27,12 @@ export interface GetProgramByIdResponse {
   success: boolean;
   data: Program;
 }
+
+export interface GetAllProgramsResponse {
+  status: boolean;
+  message: string;
+  data: {
+    programs: Program[];
+    total: number;
+  };
+}
