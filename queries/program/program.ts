@@ -2,10 +2,12 @@ import { api } from "@/utils/axiosFactory";
 import { handleErrorResponse } from "@/utils/helper";
 import { CommonNullResponse } from "@/utils/types/common";
 import { CreateProgramPayload } from "@/utils/types/program";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 export const useCreateProgram = () => {
+  const queryClient = useQueryClient();
+
   return useMutation<CommonNullResponse, Error, CreateProgramPayload>({
     mutationKey: ["useCreateProgram"],
     mutationFn: async (payload: CreateProgramPayload) => {
@@ -18,6 +20,10 @@ export const useCreateProgram = () => {
         }
         throw error;
       }
+    },
+    onSuccess: () => {
+      // Automatically invalidate and refetch programs list
+      queryClient.invalidateQueries({ queryKey: ["getAllPrograms"] });
     },
   });
 };
@@ -38,7 +44,7 @@ export const useGetPrograms = () => {
     queryKey: ["getAllPrograms"],
     queryFn: async () => {
       const res = await api.get("/program");
-      return res.data;
+      return res.data.data; // Returns { programs: [], total: number }
     },
   });
 };

@@ -1,7 +1,11 @@
-import Program from "@/pages/Program/Program";
+import AdminProgramList from "@/pages/Program/AdminProgramList";
 
-const Page = () => {
-  return <Program />;
+const page = () => {
+  return (
+    <>
+      <AdminProgramList />
+    </>
+  );
 };
 
-export default Page;
+export default page;

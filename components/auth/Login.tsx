@@ -43,7 +43,7 @@ const LoginPage = () => {
               localStorage.setItem("accessToken", data.accessToken);
             }
 
-            router.push("/main/programs");
+            router.push("/main/events");
           }
         },
         onError: (error) => {

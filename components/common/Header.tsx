@@ -4,10 +4,10 @@ import { useSocket } from "@/app/providers/SocketProvider";
 import { useAuth } from "@/hooks/useAuth";
 import { useGetUnreadCount } from "@/queries/message/message";
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { useEffect } from "react";
 import { LogOut } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const Header = () => {
   const { socket, isConnected } = useSocket();
@@ -46,7 +46,7 @@ const Header = () => {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          <Link href="/main/programs" className="text-white text-md hover:opacity-80">
+          <Link href="/main/events" className="text-white text-md hover:opacity-80">
             Events
           </Link>
 
@@ -65,6 +65,9 @@ const Header = () => {
           {/* Admin-only navigation */}
           {isAdmin && (
             <>
+              <Link href="/main/programs" className="text-white text-md hover:opacity-80">
+                Programs
+              </Link>
               <Link href="/main/department" className="text-white text-md hover:opacity-80">
                 Department
               </Link>
