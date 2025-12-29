@@ -118,21 +118,19 @@ const AdminReviewRequests = () => {
         <h2 className="text-2xl font-semibold text-gray-800">Program Update Requests</h2>
 
         <div className="flex gap-2">
-          {(["all", "pending", "approved", "rejected", "expired"] as StatusFilter[]).map(
-            (status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                  statusFilter === status
-                    ? "bg-[#044241] text-white shadow"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </button>
-            )
-          )}
+          {(["all", "pending", "approved", "rejected"] as StatusFilter[]).map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                statusFilter === status
+                  ? "bg-[#044241] text-white shadow"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </button>
+          ))}
         </div>
       </div>
 

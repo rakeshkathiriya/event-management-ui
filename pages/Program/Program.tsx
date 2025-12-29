@@ -92,7 +92,7 @@ const Program = () => {
                         {event.title}
                       </h3>
                       <p className="text-sm text-gray-600 mb-2">
-                        {new Date(event.startDate).toLocaleDateString()} • {event.totalDays} day{event.totalDays > 1 ? "s" : ""}
+                        {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
                       </p>
                       {event.description && (
                         <p className="text-sm text-gray-500 line-clamp-2">

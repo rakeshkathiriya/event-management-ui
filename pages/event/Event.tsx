@@ -158,7 +158,9 @@ export default function EventSidebar({ selectedEventId }: EventSidebarProps) {
         {/* Header */}
         <div className="p-5 border-b bg-[#044241] text-white">
           <h2 className="text-lg font-semibold">{event.title}</h2>
-          <p className="text-sm opacity-90">{new Date(event.startDate).toDateString()}</p>
+          <p className="text-sm opacity-90">
+            {new Date(event.startDate).toDateString()} - {new Date(event.endDate).toDateString()}
+          </p>
         </div>
 
         {/* Days */}

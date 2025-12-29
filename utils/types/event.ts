@@ -2,7 +2,7 @@ export interface CreateEventPayload {
   title: string;
   description?: string;
   startDate: Date;
-  totalDays: number;
+  endDate: Date;
 }
 
 export interface EventData {
@@ -10,7 +10,7 @@ export interface EventData {
   title: string;
   description: string;
   startDate: string;
-  totalDays: number;
+  endDate: string;
   days: Array<{
     _id: string;
     date: string;
