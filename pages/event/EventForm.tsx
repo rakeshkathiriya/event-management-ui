@@ -18,7 +18,7 @@ export const CreateEventForm = ({ onCancel }: CreateEventFormProps) => {
       title: "",
       description: "",
       startDate: "",
-      totalDays: 1,
+      endDate: "",
     },
     validationSchema: eventSchema,
     onSubmit: (values) => {
@@ -27,7 +27,7 @@ export const CreateEventForm = ({ onCancel }: CreateEventFormProps) => {
           title: values.title,
           description: values.description,
           startDate: new Date(values.startDate),
-          totalDays: values.totalDays,
+          endDate: new Date(values.endDate),
         },
         {
           onSuccess: () => {
@@ -93,18 +93,24 @@ export const CreateEventForm = ({ onCancel }: CreateEventFormProps) => {
           <p className="text-xs text-red-500">{touched.startDate && errors.startDate}</p>
         </div>
 
-        {/* Total Days */}
+        {/* End Date */}
         <div className="space-y-1">
-          <label className="text-sm font-medium text-bgPrimaryDark">Total Days</label>
+          <label className="text-sm font-medium text-bgPrimaryDark">
+            End Date <span className="text-red-500">*</span>
+          </label>
           <input
-            type="number"
-            min={1}
-            name="totalDays"
-            value={values.totalDays}
+            type="date"
+            name="endDate"
+            value={values.endDate}
             onChange={handleChange}
-            className="w-full rounded-xl border border-bgPrimary/30 px-4 py-3"
+            min={values.startDate}
+            className={`w-full rounded-xl px-4 py-3 text-sm ${
+              touched.endDate && errors.endDate
+                ? "border border-red-500"
+                : "border border-bgPrimary/30"
+            }`}
           />
-          <p className="text-xs text-red-500">{touched.totalDays && errors.totalDays}</p>
+          <p className="text-xs text-red-500">{touched.endDate && errors.endDate}</p>
         </div>
 
         {/* Submit */}

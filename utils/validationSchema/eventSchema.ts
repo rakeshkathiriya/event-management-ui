@@ -10,10 +10,15 @@ export const eventSchema = Yup.object().shape({
     .min(5, "Description must be at least 5 characters")
     .required("Description is required"),
 
-  startDate: Yup.date().required("Start date is required").typeError("Please select a valid date"),
+  startDate: Yup.date()
+    .required("Start date is required")
+    .typeError("Please select a valid date"),
 
-  totalDays: Yup.number()
-    .required("Total days is required")
-    .min(1, "Event must be at least 1 day long")
-    .integer("Total days must be a whole number"),
+  endDate: Yup.date()
+    .required("End date is required")
+    .typeError("Please select a valid date")
+    .min(
+      Yup.ref('startDate'),
+      "End date must be on or after start date"
+    ),
 });
