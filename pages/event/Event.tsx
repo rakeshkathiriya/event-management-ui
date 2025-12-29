@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useProgramReorderSync } from "@/hooks/useProgramReorderSync";
 import { useReorderProgramsInDay } from "@/queries/day/day";
 import { useGetNearestEvent } from "@/queries/event/event";
 import {
@@ -81,6 +82,9 @@ export default function EventSidebar() {
 
   const { data, isLoading, isError, refetch } = useGetNearestEvent();
   const reorderMutation = useReorderProgramsInDay();
+
+  // Real-time sync: Listen for program reorder events from other users
+  useProgramReorderSync();
 
   // Configure drag sensors
   const sensors = useSensors(
