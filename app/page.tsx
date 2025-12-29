@@ -7,7 +7,7 @@ export default function Page() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/main/home");
+    router.replace("/main/events");
   }, [router]);
 
   return null;
