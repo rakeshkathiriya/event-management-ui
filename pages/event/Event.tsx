@@ -3,7 +3,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useProgramReorderSync } from "@/hooks/useProgramReorderSync";
 import { useReorderProgramsInDay } from "@/queries/day/day";
-import { useGetNearestEvent } from "@/queries/event/event";
+import { useGetNearestEvent, useGetEventById } from "@/queries/event/event";
 import {
   closestCenter,
   DndContext,
@@ -72,7 +72,11 @@ function SortableProgram({ program, onClick, isAdmin }: SortableProgramProps) {
   );
 }
 
-export default function EventSidebar() {
+interface EventSidebarProps {
+  selectedEventId?: string | null;
+}
+
+export default function EventSidebar({ selectedEventId }: EventSidebarProps) {
   const { isAdmin } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
@@ -80,8 +84,17 @@ export default function EventSidebar() {
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [showDayModal, setShowDayModal] = useState(false);
 
-  const { data, isLoading, isError, refetch } = useGetNearestEvent();
+  // For admin with selected event, fetch that event; otherwise fetch nearest event
+  const { data: nearestEventData, isLoading: nearestLoading, isError: nearestError, refetch: refetchNearest } = useGetNearestEvent();
+  const { data: selectedEventData, isLoading: selectedLoading, isError: selectedError, refetch: refetchSelected } = useGetEventById(isAdmin ? selectedEventId ?? null : null);
+
   const reorderMutation = useReorderProgramsInDay();
+
+  // Determine which event to display
+  const data = isAdmin && selectedEventId ? selectedEventData : nearestEventData;
+  const isLoading = isAdmin && selectedEventId ? selectedLoading : nearestLoading;
+  const isError = isAdmin && selectedEventId ? selectedError : nearestError;
+  const refetch = isAdmin && selectedEventId ? refetchSelected : refetchNearest;
 
   // Real-time sync: Listen for program reorder events from other users
   useProgramReorderSync();

@@ -4,7 +4,7 @@ import axios from "axios";
 import { api } from "@/utils/axiosFactory";
 import { handleErrorResponse } from "@/utils/helper";
 import type { CommonApiError, CommonNullResponse } from "@/utils/types/common";
-import type { CreateEventPayload, GetNearestEventResponse } from "@/utils/types/event";
+import type { CreateEventPayload, GetNearestEventResponse, GetAllEventsResponse } from "@/utils/types/event";
 
 export const useCreateEvent = () => {
   return useMutation<CommonNullResponse, CommonApiError, CreateEventPayload>({
@@ -30,5 +30,26 @@ export const useGetNearestEvent = () => {
       const res = await api.get("/event");
       return res.data;
     },
+  });
+};
+
+export const useGetAllEvents = () => {
+  return useQuery<GetAllEventsResponse>({
+    queryKey: ["getAllEvents"],
+    queryFn: async () => {
+      const res = await api.get("/event/all");
+      return res.data;
+    },
+  });
+};
+
+export const useGetEventById = (eventId: string | null) => {
+  return useQuery<GetNearestEventResponse>({
+    queryKey: ["getEventById", eventId],
+    queryFn: async () => {
+      const res = await api.get(`/event/${eventId}`);
+      return res.data;
+    },
+    enabled: !!eventId,
   });
 };
