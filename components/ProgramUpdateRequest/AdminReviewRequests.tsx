@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Clock, CheckCircle, XCircle, AlertCircle, Eye } from "lucide-react";
 import {
-  useGetAllUpdateRequests,
   useApproveUpdateRequest,
+  useGetAllUpdateRequests,
   useRejectUpdateRequest,
 } from "@/queries/programUpdateRequest/programUpdateRequest";
 import { format } from "date-fns";
+import { AlertCircle, CheckCircle, Clock, Eye, XCircle } from "lucide-react";
+import { useState } from "react";
 import { toast } from "react-hot-toast";
 import ReviewRequestModal from "./ReviewRequestModal";
 
@@ -39,7 +39,8 @@ const AdminReviewRequests = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const baseClasses = "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium";
+    const baseClasses =
+      "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium";
 
     switch (status) {
       case "pending":
@@ -117,19 +118,21 @@ const AdminReviewRequests = () => {
         <h2 className="text-2xl font-semibold text-gray-800">Program Update Requests</h2>
 
         <div className="flex gap-2">
-          {(["all", "pending", "approved", "rejected", "expired"] as StatusFilter[]).map((status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                statusFilter === status
-                  ? "bg-[#044241] text-white shadow"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </button>
-          ))}
+          {(["all", "pending", "approved", "rejected", "expired"] as StatusFilter[]).map(
+            (status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                  statusFilter === status
+                    ? "bg-[#044241] text-white shadow"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </button>
+            )
+          )}
         </div>
       </div>
 
@@ -151,7 +154,9 @@ const AdminReviewRequests = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-lg font-semibold text-gray-800">
-                      {typeof request.programId === 'object' ? request.programId.title : 'Unknown Program'}
+                      {typeof request.programId === "object"
+                        ? request.programId.title
+                        : "Unknown Program"}
                     </h3>
                     {getStatusBadge(request.status)}
                   </div>
@@ -159,14 +164,10 @@ const AdminReviewRequests = () => {
                   <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                     <span>
                       Requested by:{" "}
-                      <span className="font-medium text-gray-800">
-                        {request.requestedByName}
-                      </span>
+                      <span className="font-medium text-gray-800">{request.requestedByName}</span>
                     </span>
                     <span>•</span>
-                    <span>
-                      {format(new Date(request.createdAt), "MMM dd, yyyy 'at' hh:mm a")}
-                    </span>
+                    <span>{format(new Date(request.createdAt), "MMM dd, yyyy 'at' hh:mm a")}</span>
                   </div>
 
                   {request.status !== "pending" && request.reviewedByName && (

@@ -30,8 +30,8 @@ const AddProgramInDay = ({ dayId, onClose, refetchData }: AddProgramInDayProps) 
   const { mutate, isPending } = useAddProgramToDay();
   const { data, isLoading } = useGetPrograms();
 
-  // ✅ SAFELY extract array
-  const programs: Program[] = data?.data?.programs ?? [];
+  // ✅ SAFELY extract array - data already contains { programs: [], total: number }
+  const programs: Program[] = data?.programs ?? [];
 
   const formik = useFormik<AddProgramFormValues>({
     initialValues: {
