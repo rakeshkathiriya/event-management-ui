@@ -1,21 +1,43 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
-import { useGetAllUsers } from "@/queries/user/user";
+import { useGetAllUsers, useDeleteUser } from "@/queries/user/user";
 import type { User as UserType } from "@/utils/types/user";
 import { useAuth } from "@/hooks/useAuth";
 import UserRegistrationForm from "./UserCreationForm";
+import DeleteUserModal from "@/components/common/DeleteUserModal";
 
 const User = () => {
   const router = useRouter();
   const { isAdmin, isLoading: authLoading } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteModalUser, setDeleteModalUser] = useState<UserType | null>(null);
   const { data, isLoading, error, refetch } = useGetAllUsers();
+  const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
 
   const users: UserType[] = data?.data?.users ?? [];
+
+  // Delete handler
+  const handleDeleteUser = (userId: string) => {
+    deleteUser(userId, {
+      onSuccess: (data) => {
+        if (data.status) {
+          toast.success(data.message ?? "User deleted successfully");
+          refetch();
+          setDeleteModalUser(null);
+        } else {
+          toast.error(data.message ?? "Failed to delete user");
+        }
+      },
+      onError: (error) => {
+        toast.error(error.message ?? "Something went wrong");
+      },
+    });
+  };
 
   // Redirect non-admin users
   useEffect(() => {
@@ -62,6 +84,7 @@ const User = () => {
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
                 Departments
               </th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
             </tr>
           </thead>
 
@@ -89,11 +112,21 @@ const User = () => {
                       )}
                     </div>
                   </td>
+
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => setDeleteModalUser(user)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                      title="Delete user"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={3} className="py-10 text-center text-sm text-gray-400">
+                <td colSpan={4} className="py-10 text-center text-sm text-gray-400">
                   No users found
                 </td>
               </tr>
@@ -102,9 +135,19 @@ const User = () => {
         </table>
       </div>
 
-      {/* MODAL */}
+      {/* ADD USER MODAL */}
       {showAddModal && (
         <UserRegistrationForm onCancel={() => setShowAddModal(false)} refetchData={refetch} />
+      )}
+
+      {/* DELETE USER MODAL */}
+      {deleteModalUser && (
+        <DeleteUserModal
+          userName={deleteModalUser.name}
+          onConfirm={() => handleDeleteUser(deleteModalUser._id)}
+          onCancel={() => setDeleteModalUser(null)}
+          isDeleting={isDeleting}
+        />
       )}
     </div>
   );
