@@ -28,6 +28,27 @@ const ReviewRequestModalWrapper: React.FC<ReviewRequestModalWrapperProps> = ({
   requestId,
   onClose,
 }) => {
+  // Validate requestId
+  if (!requestId || requestId === "undefined" || requestId === "null") {
+    console.error("❌ Invalid requestId:", requestId);
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="bg-white px-8 py-6 rounded-lg shadow-2xl max-w-md">
+          <h3 className="text-lg font-semibold text-red-600 mb-2">Invalid Request</h3>
+          <p className="text-sm text-gray-700 mb-4">
+            The request ID is invalid. Please try again.
+          </p>
+          <button
+            onClick={onClose}
+            className="w-full rounded-lg px-4 py-2 bg-gray-200 hover:bg-gray-300 transition"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const { data: request, isLoading, error } = useGetUpdateRequestById(requestId);
   const approveMutation = useApproveUpdateRequest();
   const rejectMutation = useRejectUpdateRequest();
@@ -67,9 +88,9 @@ const ReviewRequestModalWrapper: React.FC<ReviewRequestModalWrapperProps> = ({
   }
 
   // Handle approve action
-  const handleApprove = async (reqId: string) => {
+  const handleApprove = async (reqId: string, finalMergedContent: string) => {
     try {
-      await approveMutation.mutateAsync(reqId);
+      await approveMutation.mutateAsync({ requestId: reqId, finalMergedContent });
     } catch (error: any) {
       // Error will be handled in onApproveSuccess/onApproveError callbacks
       throw error;

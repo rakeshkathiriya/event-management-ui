@@ -33,9 +33,11 @@ export const useMessageNotifications = () => {
   useEffect(() => {
     if (!socket || !isConnected) return;
 
-    // Listen for new messages
-    socket.on('message:new', (messageData: any) => {
-      console.log('Received new message notification:', messageData);
+    console.log('🔔 Setting up message notification listeners');
+
+    // Define handler functions so we can properly remove them later
+    const handleNewMessage = (messageData: any) => {
+      console.log('✅ Received new message notification:', messageData);
 
       const notification: MessageNotification = {
         id: messageData.messageId || Date.now().toString(),
@@ -60,22 +62,31 @@ export const useMessageNotifications = () => {
       // Invalidate inbox and unread count queries
       queryClient.invalidateQueries({ queryKey: ['useGetInboxMessages'] });
       queryClient.invalidateQueries({ queryKey: ['useGetUnreadCount'] });
-    });
+    };
 
-    // Listen for unread count updates
-    socket.on('unread:count', ({ count }: { count: number }) => {
-      console.log('Unread count updated:', count);
+    const handleUnreadCount = ({ count }: { count: number }) => {
+      console.log('✅ Unread count updated:', count);
       queryClient.setQueryData(['useGetUnreadCount'], {
         success: true,
         data: { count },
       });
-    });
-
-    return () => {
-      socket.off('message:new');
-      socket.off('unread:count');
     };
-  }, [socket, isConnected, queryClient]);
+
+    // Listen for new messages
+    socket.on('message:new', handleNewMessage);
+    console.log('✅ Registered "message:new" listener');
+
+    // Listen for unread count updates
+    socket.on('unread:count', handleUnreadCount);
+    console.log('✅ Registered "unread:count" listener');
+
+    // Cleanup function with specific handler references
+    return () => {
+      console.log('🧹 Cleaning up message notification listeners');
+      socket.off('message:new', handleNewMessage);
+      socket.off('unread:count', handleUnreadCount);
+    };
+  }, [socket, isConnected]);
 
   return {
     notifications,
