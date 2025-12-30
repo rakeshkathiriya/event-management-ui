@@ -1,21 +1,44 @@
 "use client";
 
-import { Layers, Plus, Users } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Layers, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 
-import { useGetDepartments } from "@/queries/department/department";
+import DeleteDepartmentModal from "@/components/common/DeleteDepartmentModal";
 import { useAuth } from "@/hooks/useAuth";
+import { useDeleteDepartment, useGetDepartments } from "@/queries/department/department";
+import type { Department as DepartmentType } from "@/utils/types/department";
 import DepartmentForm from "./DepartmentForm";
 
 const Department = () => {
   const router = useRouter();
   const { isAdmin, isLoading: authLoading } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editDepartment, setEditDepartment] = useState<DepartmentType | null>(null);
+  const [deleteDepartment, setDeleteDepartment] = useState<DepartmentType | null>(null);
   const { data, isLoading, error, refetch } = useGetDepartments();
+  const { mutate: deleteDept, isPending: isDeleting } = useDeleteDepartment();
 
   const departments = data?.data?.departments ?? [];
   const totalUsers = departments.reduce((sum, d) => sum + d.totalUsers, 0);
+
+  const handleDeleteDepartment = (deptId: string) => {
+    deleteDept(deptId, {
+      onSuccess: (data) => {
+        if (data.status) {
+          toast.success(data.message ?? "Department deleted successfully");
+          refetch();
+          setDeleteDepartment(null);
+        } else {
+          toast.error(data.message ?? "Failed to delete department");
+        }
+      },
+      onError: (error) => {
+        toast.error(error.message ?? "Something went wrong");
+      },
+    });
+  };
 
   // Redirect non-admin users
   useEffect(() => {
@@ -90,12 +113,30 @@ const Department = () => {
           >
             <div className="absolute inset-x-0 top-0 mx-auto h-1 w-[95%] rounded-t-3xl bg-linear-to-r from-bgPrimaryDark to-bgPrimary" />
 
+            {/* Action Buttons - Top Right */}
+            <div className="absolute right-4 top-4 flex items-center gap-2">
+              <button
+                onClick={() => setEditDepartment(dept)}
+                className="p-2 rounded-lg text-bgPrimaryDark hover:bg-bgPrimary/20 transition"
+                title="Edit department"
+              >
+                <Pencil size={16} />
+              </button>
+              <button
+                onClick={() => setDeleteDepartment(dept)}
+                className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition"
+                title="Delete department"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-bgPrimaryDark">{dept.name}</h3>
-              <span className="flex items-center gap-1 rounded-full bg-bgPrimary/15 px-3 py-1 text-xs font-medium text-bgPrimaryDark">
+              <h3 className="text-lg font-semibold text-bgPrimaryDark pr-20">{dept.name}</h3>
+              {/* <span className="flex items-center gap-1 rounded-full bg-bgPrimary/15 px-3 py-1 text-xs font-medium text-bgPrimaryDark">
                 <Users size={14} />
                 {dept.totalUsers}
-              </span>
+              </span> */}
             </div>
 
             {dept.description && (
@@ -124,8 +165,28 @@ const Department = () => {
         ))}
       </div>
 
+      {/* CREATE DEPARTMENT MODAL */}
       {showAddModal && (
         <DepartmentForm onCancel={() => setShowAddModal(false)} refetchData={refetch} />
+      )}
+
+      {/* EDIT DEPARTMENT MODAL */}
+      {editDepartment && (
+        <DepartmentForm
+          department={editDepartment}
+          onCancel={() => setEditDepartment(null)}
+          refetchData={refetch}
+        />
+      )}
+
+      {/* DELETE DEPARTMENT MODAL */}
+      {deleteDepartment && (
+        <DeleteDepartmentModal
+          departmentName={deleteDepartment.name}
+          onConfirm={() => handleDeleteDepartment(deleteDepartment._id)}
+          onCancel={() => setDeleteDepartment(null)}
+          isDeleting={isDeleting}
+        />
       )}
     </div>
   );
