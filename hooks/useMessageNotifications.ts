@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSocket } from '@/app/providers/SocketProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -21,6 +21,14 @@ export const useMessageNotifications = () => {
   const { socket, isConnected } = useSocket();
   const queryClient = useQueryClient();
   const [notifications, setNotifications] = useState<MessageNotification[]>([]);
+
+  const removeNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
+  const clearAllNotifications = useCallback(() => {
+    setNotifications([]);
+  }, []);
 
   useEffect(() => {
     if (!socket || !isConnected) return;
@@ -68,14 +76,6 @@ export const useMessageNotifications = () => {
       socket.off('unread:count');
     };
   }, [socket, isConnected, queryClient]);
-
-  const removeNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  };
-
-  const clearAllNotifications = () => {
-    setNotifications([]);
-  };
 
   return {
     notifications,

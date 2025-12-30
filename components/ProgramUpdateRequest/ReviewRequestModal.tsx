@@ -3,8 +3,9 @@
 import { ProgramUpdateRequest } from "@/queries/programUpdateRequest/programUpdateRequest";
 import { getChangeIndicator, highlightChanges, showDeletions } from "@/utils/diffHighlight";
 import { format } from "date-fns";
-import { CheckCircle, X, XCircle } from "lucide-react";
+import { CheckCircle, X, XCircle, AlertCircle } from "lucide-react";
 import { useState } from "react";
+import { motion } from "framer-motion";
 
 interface ReviewRequestModalProps {
   request: ProgramUpdateRequest;
@@ -13,6 +14,10 @@ interface ReviewRequestModalProps {
   onReject: (requestId: string, reason?: string) => void;
   isApproving: boolean;
   isRejecting: boolean;
+  onApproveSuccess?: () => void;
+  onApproveError?: (error: any) => void;
+  onRejectSuccess?: () => void;
+  onRejectError?: (error: any) => void;
 }
 
 /**
@@ -32,16 +37,39 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
   onReject,
   isApproving,
   isRejecting,
+  onApproveSuccess,
+  onApproveError,
+  onRejectSuccess,
+  onRejectError,
 }) => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleReject = () => {
+  const handleApprove = async () => {
+    setError(null);
+    try {
+      await onApprove(request._id);
+      onApproveSuccess?.();
+    } catch (err: any) {
+      setError(err.message || 'Failed to approve request');
+      onApproveError?.(err);
+    }
+  };
+
+  const handleReject = async () => {
     if (!rejectionReason.trim()) {
-      alert("Please provide a rejection reason");
+      setError("Please provide a rejection reason");
       return;
     }
-    onReject(request._id, rejectionReason);
+    setError(null);
+    try {
+      await onReject(request._id, rejectionReason);
+      onRejectSuccess?.();
+    } catch (err: any) {
+      setError(err.message || 'Failed to reject request');
+      onRejectError?.(err);
+    }
   };
 
   const isPending = request.status === "pending";
@@ -61,11 +89,54 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
   const changeIndicator = getChangeIndicator(changeType);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
-      <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto backdrop-blur-sm"
+    >
+      <motion.div
+        initial={{ scale: 0.95, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.95, y: 20 }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
         className="relative w-full max-w-7xl rounded-lg bg-white shadow-2xl my-8 flex flex-col"
         style={{ maxHeight: "calc(100vh - 4rem)" }}
       >
+        {/* Loading Overlay */}
+        {(isApproving || isRejecting) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-sm"
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm font-medium text-gray-700">
+                {isApproving ? 'Approving request...' : 'Rejecting request...'}
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Error Banner */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="px-6 py-3 bg-red-50 border-b border-red-200 flex items-center gap-2 flex-shrink-0"
+          >
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <p className="text-sm text-red-700 flex-1">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+
         {/* Header - Fixed */}
         <div className="flex items-center justify-between border-b px-6 py-4 bg-gray-50 flex-shrink-0">
           <div className="flex-1 min-w-0">
@@ -239,7 +310,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                     Reject
                   </button>
                   <button
-                    onClick={() => onApprove(request._id)}
+                    onClick={handleApprove}
                     disabled={isApproving || isRejecting}
                     className="rounded-lg px-5 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
@@ -251,8 +322,8 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

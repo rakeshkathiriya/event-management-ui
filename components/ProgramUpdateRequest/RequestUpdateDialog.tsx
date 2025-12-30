@@ -1,10 +1,10 @@
 "use client";
 
+import { useSubmitUpdateRequest } from "@/queries/programUpdateRequest/programUpdateRequest";
 import { X } from "lucide-react";
-import { useState } from "react";
 import dynamic from "next/dynamic";
 import "quill/dist/quill.snow.css";
-import { useSubmitUpdateRequest } from "@/queries/programUpdateRequest/programUpdateRequest";
+import { useState } from "react";
 import { toast } from "react-hot-toast";
 
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
@@ -22,9 +22,7 @@ const RequestUpdateDialog: React.FC<RequestUpdateDialogProps> = ({
   currentDescription,
   onClose,
 }) => {
-  const [requestedDescription, setRequestedDescription] = useState(
-    currentDescription || ""
-  );
+  const [requestedDescription, setRequestedDescription] = useState(currentDescription || "");
   const { mutate: submitRequest, isPending } = useSubmitUpdateRequest();
 
   const handleSubmit = () => {
@@ -49,9 +47,7 @@ const RequestUpdateDialog: React.FC<RequestUpdateDialogProps> = ({
           onClose();
         },
         onError: (error: any) => {
-          toast.error(
-            error?.message || "Failed to submit update request"
-          );
+          toast.error(error?.message || "Failed to submit update request");
         },
       }
     );
@@ -63,12 +59,8 @@ const RequestUpdateDialog: React.FC<RequestUpdateDialogProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-800">
-              Request Description Update
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Program: {programTitle}
-            </p>
+            <h2 className="text-xl font-semibold text-gray-800">Request Description Update</h2>
+            <p className="text-sm text-gray-500 mt-1">Program: {programTitle}</p>
           </div>
           <button
             onClick={onClose}
@@ -81,15 +73,17 @@ const RequestUpdateDialog: React.FC<RequestUpdateDialogProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="mb-4">
+          {/* <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Current Description
             </label>
             <div
-              className="prose prose-sm max-w-none rounded-lg border border-gray-200 bg-gray-50 p-4"
-              dangerouslySetInnerHTML={{ __html: currentDescription || "<p>No description available</p>" }}
+            // className="prose prose-sm max-w-none rounded-lg border border-gray-200 bg-gray-50 p-4"
+            // dangerouslySetInnerHTML={{
+            //   __html: currentDescription || "<p>No description available</p>",
+            // }}
             />
-          </div>
+          </div> */}
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
