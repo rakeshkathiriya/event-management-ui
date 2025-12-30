@@ -48,3 +48,47 @@ export const useGetPrograms = () => {
     },
   });
 };
+
+export const useUpdateProgram = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<CommonNullResponse, Error, { id: string } & CreateProgramPayload>({
+    mutationKey: ["useUpdateProgram"],
+    mutationFn: async ({ id, ...payload }) => {
+      try {
+        const response = await api.patch<CommonNullResponse>(`/program/${id}`, payload);
+        return response.data;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          throw handleErrorResponse(error);
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["getAllPrograms"] });
+    },
+  });
+};
+
+export const useDeleteProgram = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<CommonNullResponse, Error, string>({
+    mutationKey: ["useDeleteProgram"],
+    mutationFn: async (programId: string) => {
+      try {
+        const response = await api.delete<CommonNullResponse>(`/program/${programId}`);
+        return response.data;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          throw handleErrorResponse(error);
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["getAllPrograms"] });
+    },
+  });
+};

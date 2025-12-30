@@ -8,7 +8,8 @@ import { toast } from "react-toastify";
 import DescriptionModal from "@/components/common/DescriptionModal";
 import Modal from "@/components/Model";
 import { useGetDepartments } from "@/queries/department/department";
-import { useCreateProgram } from "@/queries/program/program";
+import { useCreateProgram, useUpdateProgram } from "@/queries/program/program";
+import type { CreateProgramPayload, Program } from "@/utils/types/program";
 import { programSchema } from "@/utils/validationSchema/programSchema";
 
 import { Eye, X } from "lucide-react";
@@ -19,60 +20,71 @@ const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 
 /* ---------------- Types ---------------- */
 
-interface CreateProgramPayload {
-  title: string;
-  description: string;
-  departmentIds: string[];
-}
-
-interface Department {
-  _id: string;
-  name: string;
-}
-
-interface CreateProgramFormProps {
+interface ProgramFormProps {
   onCancel: () => void;
   refetchData?: () => void;
+  program?: Program;
 }
 
 /* ---------------- Component ---------------- */
 
-const CreateProgramForm = ({ onCancel, refetchData }: CreateProgramFormProps) => {
-  const { mutate, isPending } = useCreateProgram();
+const ProgramForm = ({ onCancel, refetchData, program }: ProgramFormProps) => {
+  const { mutate: createMutate, isPending: isCreating } = useCreateProgram();
+  const { mutate: updateMutate, isPending: isUpdating } = useUpdateProgram();
   const { data } = useGetDepartments();
   const [showPreview, setShowPreview] = useState(false);
 
-  const departments: Department[] = data?.data?.departments ?? [];
+  const isEditMode = !!program;
+  const isPending = isCreating || isUpdating;
+  const departments = data?.data?.departments ?? [];
 
-  const handleCreate = useCallback(
+  const handleSubmit = useCallback(
     (payload: CreateProgramPayload) => {
-      mutate(payload, {
-        onSuccess: (res) => {
-          if (res.status) {
-            toast.success(res.message || "Program created successfully");
-            refetchData?.();
-            onCancel();
-          } else {
-            toast.error(res.message || "Failed to create program");
+      if (isEditMode && program) {
+        updateMutate(
+          { id: program._id, ...payload },
+          {
+            onSuccess: (res) => {
+              if (res.status) {
+                toast.success(res.message || "Program updated successfully");
+                refetchData?.();
+                onCancel();
+              } else {
+                toast.error(res.message || "Failed to update program");
+              }
+            },
+            onError: () => toast.error("Something went wrong"),
           }
-        },
-        onError: () => toast.error("Something went wrong"),
-      });
+        );
+      } else {
+        createMutate(payload, {
+          onSuccess: (res) => {
+            if (res.status) {
+              toast.success(res.message || "Program created successfully");
+              refetchData?.();
+              onCancel();
+            } else {
+              toast.error(res.message || "Failed to create program");
+            }
+          },
+          onError: () => toast.error("Something went wrong"),
+        });
+      }
     },
-    [mutate, onCancel, refetchData]
+    [isEditMode, program, updateMutate, createMutate, onCancel, refetchData]
   );
 
   const formik = useFormik<CreateProgramPayload>({
     initialValues: {
-      title: "",
-      description: "",
-      departmentIds: [],
+      title: program?.title ?? "",
+      description: program?.description ?? "",
+      departmentIds: program?.departments.map((d) => d._id) ?? [],
     },
     validationSchema: programSchema,
-    onSubmit: handleCreate,
+    onSubmit: handleSubmit,
   });
 
-  const { values, errors, touched, handleChange, handleSubmit, setFieldValue } = formik;
+  const { values, errors, touched, handleChange, handleSubmit: formikHandleSubmit, setFieldValue } = formik;
 
   // Get selected departments for preview
   const selectedDepartments = departments.filter((dept) => values.departmentIds.includes(dept._id));
@@ -81,10 +93,10 @@ const CreateProgramForm = ({ onCancel, refetchData }: CreateProgramFormProps) =>
     <>
       <Modal onClose={onCancel} isLoading={isPending}>
         <h3 className="mb-6 text-center text-xl font-semibold text-bgPrimaryDark">
-          Create Program
+          {isEditMode ? "Edit Program" : "Create Program"}
         </h3>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={formikHandleSubmit} className="space-y-6">
           {/* Program Title */}
           <div>
             <label className="text-sm font-medium text-bgPrimaryDark">
@@ -195,7 +207,13 @@ const CreateProgramForm = ({ onCancel, refetchData }: CreateProgramFormProps) =>
             disabled={isPending}
             className="w-full rounded-full bg-bgPrimaryDark py-3 font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed"
           >
-            {isPending ? "Creating..." : "Create Program"}
+            {isPending
+              ? isEditMode
+                ? "Updating..."
+                : "Creating..."
+              : isEditMode
+              ? "Update Program"
+              : "Create Program"}
           </button>
         </form>
       </Modal>
@@ -222,4 +240,4 @@ const CreateProgramForm = ({ onCancel, refetchData }: CreateProgramFormProps) =>
   );
 };
 
-export default CreateProgramForm;
+export default ProgramForm;
