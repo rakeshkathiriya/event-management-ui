@@ -48,6 +48,11 @@ export default function NotificationSidebar() {
       setModalType("message");
     } else if (notification.type === "new-request") {
       // Only open modal for new requests, not for reviewed notifications
+      // Validate requestId exists before opening modal
+      if (!notification.requestId || notification.requestId === "undefined") {
+        console.error("❌ Cannot open review modal: requestId is missing or invalid", notification);
+        return;
+      }
       setSelectedNotification(notification);
       setModalType("review-request");
     }

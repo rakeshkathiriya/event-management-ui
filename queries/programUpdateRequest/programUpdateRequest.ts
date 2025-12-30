@@ -19,6 +19,7 @@ export interface ProgramUpdateRequest {
   requestedByName: string;
   currentDescriptionSnapshot: string;
   requestedDescription: string;
+  finalMergedContent?: string; // Admin's final merged/edited content (optional - only set when approved)
   status: "pending" | "approved" | "rejected" | "expired";
   reviewedBy?: {
     _id: string;
@@ -141,12 +142,17 @@ export const useGetUpdateRequestById = (requestId: string) => {
 export const useApproveUpdateRequest = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<ApproveRejectResponse, Error, string>({
+  return useMutation<
+    ApproveRejectResponse,
+    Error,
+    { requestId: string; finalMergedContent: string }
+  >({
     mutationKey: ["approveUpdateRequest"],
-    mutationFn: async (requestId: string) => {
+    mutationFn: async ({ requestId, finalMergedContent }) => {
       try {
         const response = await api.patch<ApproveRejectResponse>(
-          `/program-update-request/${requestId}/approve`
+          `/program-update-request/${requestId}/approve`,
+          { finalMergedContent }
         );
         return response.data;
       } catch (error) {

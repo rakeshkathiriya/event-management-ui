@@ -68,43 +68,42 @@ export const useProgramUpdateNotifications = () => {
   useEffect(() => {
     if (!socket || !isConnected) return;
 
-    // Listen for new program update requests (ADMIN only)
-    if (isAdmin) {
-      socket.on("program:update-request", (data: any) => {
-        console.log("Received program update request notification:", data);
+    console.log(`🔔 Setting up program update notification listeners (isAdmin: ${isAdmin})`);
 
-        const notification: ProgramUpdateNotification = {
-          id: data.requestId || Date.now().toString(),
-          requestId: data.requestId,
-          programId: data.programId,
-          requestedBy: data.requestedBy,
-          requestedByRole: data.requestedByRole,
-          message: data.message,
-          createdAt: new Date(data.createdAt || new Date()),
-          type: "new-request",
-        };
+    // Define handler functions so we can properly remove them later
+    const handleUpdateRequest = (data: any) => {
+      console.log("✅ Received program update request notification:", data);
 
-        // Add to notifications list
-        setNotifications((prev) => [notification, ...prev]);
+      const notification: ProgramUpdateNotification = {
+        id: data.requestId || Date.now().toString(),
+        requestId: data.requestId,
+        programId: data.programId,
+        requestedBy: data.requestedBy,
+        requestedByRole: data.requestedByRole,
+        message: data.message,
+        createdAt: new Date(data.createdAt || new Date()),
+        type: "new-request",
+      };
 
-        // Show toast notification
-        toast(
-          `${data.requestedBy} submitted a program description update request`,
-          {
-            duration: 5000,
-            icon: "📝",
-          }
-        );
+      // Add to notifications list
+      setNotifications((prev) => [notification, ...prev]);
 
-        // Invalidate admin queries
-        queryClient.invalidateQueries({ queryKey: ["allUpdateRequests"] });
-        queryClient.invalidateQueries({ queryKey: ["updateRequestStats"] });
-      });
-    }
+      // Show toast notification
+      toast(
+        `${data.requestedBy} submitted a program description update request`,
+        {
+          duration: 5000,
+          icon: "📝",
+        }
+      );
 
-    // Listen for update request review notifications (ALL USERS)
-    socket.on("program:update-reviewed", (data: any) => {
-      console.log("Received program update review notification:", data);
+      // Invalidate admin queries
+      queryClient.invalidateQueries({ queryKey: ["allUpdateRequests"] });
+      queryClient.invalidateQueries({ queryKey: ["updateRequestStats"] });
+    };
+
+    const handleUpdateReviewed = (data: any) => {
+      console.log("✅ Received program update review notification:", data);
 
       const notification: ProgramUpdateNotification = {
         id: data.requestId || Date.now().toString(),
@@ -153,11 +152,10 @@ export const useProgramUpdateNotifications = () => {
         queryClient.invalidateQueries({ queryKey: ["allUpdateRequests"] });
         queryClient.invalidateQueries({ queryKey: ["updateRequestStats"] });
       }
-    });
+    };
 
-    // Listen for program updates (ALL USERS - for real-time sync)
-    socket.on("program:updated", (data: any) => {
-      console.log("📢 Program updated:", data);
+    const handleProgramUpdated = (data: any) => {
+      console.log("✅ Program updated:", data);
 
       // Update React Query cache for this specific program
       queryClient.setQueryData(["getProgramById", data.programId], (oldData: any) => {
@@ -175,14 +173,54 @@ export const useProgramUpdateNotifications = () => {
       queryClient.invalidateQueries({ queryKey: ["getProgramById", data.programId] });
 
       console.log(`✅ Updated cache for program ${data.programId}`);
-    });
-
-    return () => {
-      socket.off("program:update-request");
-      socket.off("program:update-reviewed");
-      socket.off("program:updated");
     };
-  }, [socket, isConnected, queryClient, isAdmin]);
+
+    const handleNotificationAutoDismissed = (data: any) => {
+      console.log("✅ Auto-dismissing notification:", data);
+
+      // Remove the notification from the UI
+      setNotifications((prev) =>
+        prev.filter(
+          (n) =>
+            !(
+              n.requestId === data.referenceId &&
+              n.type === "new-request"
+            )
+        )
+      );
+
+      console.log(`✅ Auto-dismissed notification for request ${data.referenceId}`);
+    };
+
+    // Listen for new program update requests (ADMIN only)
+    if (isAdmin) {
+      socket.on("program:update-request", handleUpdateRequest);
+      console.log("✅ Registered 'program:update-request' listener");
+
+      // Listen for auto-dismiss events (ADMIN only)
+      socket.on("notification:auto-dismissed", handleNotificationAutoDismissed);
+      console.log("✅ Registered 'notification:auto-dismissed' listener");
+    }
+
+    // Listen for update request review notifications (ALL USERS)
+    socket.on("program:update-reviewed", handleUpdateReviewed);
+    console.log("✅ Registered 'program:update-reviewed' listener");
+
+    // Listen for program updates (ALL USERS - for real-time sync)
+    socket.on("program:updated", handleProgramUpdated);
+    console.log("✅ Registered 'program:updated' listener");
+
+    // Cleanup function with specific handler references
+    return () => {
+      console.log("🧹 Cleaning up program update notification listeners");
+      if (isAdmin) {
+        socket.off("program:update-request", handleUpdateRequest);
+        socket.off("notification:auto-dismissed", handleNotificationAutoDismissed);
+      }
+      socket.off("program:update-reviewed", handleUpdateReviewed);
+      socket.off("program:updated", handleProgramUpdated);
+    };
+  }, [socket, isConnected, isAdmin]);
 
   return {
     notifications,
