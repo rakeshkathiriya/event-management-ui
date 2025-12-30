@@ -5,59 +5,95 @@ import { useFormik } from "formik";
 import { useCallback } from "react";
 import { toast } from "react-toastify";
 
-import { useCreateDepartment } from "@/queries/department/department";
-import { useGetUsers } from "@/queries/user/user";
+import { useCreateDepartment, useUpdateDepartment } from "@/queries/department/department";
+import { useGetUsers, useGetAllUsers } from "@/queries/user/user";
 
-import type { CreateDepartmentPayload } from "@/utils/types/department";
+import type { CreateDepartmentPayload, Department } from "@/utils/types/department";
 import { departmentSchema } from "@/utils/validationSchema/departmentSchema";
 import { X } from "lucide-react";
 
 interface DepartmentFormProps {
   onCancel: () => void;
   refetchData: () => void;
+  department?: Department;
 }
 
-const DepartmentForm = ({ onCancel, refetchData }: DepartmentFormProps) => {
-  const { isPending, mutate } = useCreateDepartment();
-  const { data: usersData, isLoading: usersLoading, error: usersError } = useGetUsers();
+const DepartmentForm = ({ onCancel, refetchData, department }: DepartmentFormProps) => {
+  const { isPending: isCreating, mutate: createMutate } = useCreateDepartment();
+  const { isPending: isUpdating, mutate: updateMutate } = useUpdateDepartment();
+  const isEditMode = !!department;
 
+  // Fetch all users when editing (to allow moving users between departments)
+  // Fetch only unassigned users when creating
+  const { data: unassignedData, isLoading: unassignedLoading, error: unassignedError } = useGetUsers();
+  const { data: allUsersData, isLoading: allUsersLoading, error: allUsersError } = useGetAllUsers();
+
+  const usersData = isEditMode ? allUsersData : unassignedData;
+  const usersLoading = isEditMode ? allUsersLoading : unassignedLoading;
+  const usersError = isEditMode ? allUsersError : unassignedError;
+
+  const isPending = isCreating || isUpdating;
   const usersList = usersData?.data?.users ?? [];
 
-  const handleCreate = useCallback(
+  const handleSubmit = useCallback(
     (payload: CreateDepartmentPayload) => {
-      mutate(payload, {
-        onSuccess: (data) => {
-          if (data.status) {
-            toast.success(data.message ?? "Department created successfully");
-            refetchData();
-            onCancel();
-          } else {
-            toast.error(data.message ?? "Department creation failed");
+      if (isEditMode && department) {
+        updateMutate(
+          { id: department._id, ...payload },
+          {
+            onSuccess: (data) => {
+              if (data.status) {
+                toast.success(data.message ?? "Department updated successfully");
+                refetchData();
+                onCancel();
+              } else {
+                toast.error(data.message ?? "Department update failed");
+              }
+            },
+            onError: (error) => {
+              toast.error(error.message ?? "Something went wrong");
+            },
           }
-        },
-        onError: (error) => {
-          toast.error(error.message ?? "Something went wrong");
-        },
-      });
+        );
+      } else {
+        createMutate(payload, {
+          onSuccess: (data) => {
+            if (data.status) {
+              toast.success(data.message ?? "Department created successfully");
+              refetchData();
+              onCancel();
+            } else {
+              toast.error(data.message ?? "Department creation failed");
+            }
+          },
+          onError: (error) => {
+            toast.error(error.message ?? "Something went wrong");
+          },
+        });
+      }
     },
-    [mutate, onCancel, refetchData]
+    [isEditMode, department, updateMutate, createMutate, onCancel, refetchData]
   );
 
   const formik = useFormik<CreateDepartmentPayload>({
-    initialValues: { name: "", description: "", users: [] },
+    initialValues: {
+      name: department?.name ?? "",
+      description: department?.description ?? "",
+      users: department?.users.map((u) => u._id) ?? [],
+    },
     validationSchema: departmentSchema,
-    onSubmit: handleCreate,
+    onSubmit: handleSubmit,
   });
 
-  const { values, handleChange, handleBlur, handleSubmit, touched, errors, setFieldValue } = formik;
+  const { values, handleChange, handleBlur, handleSubmit: formikSubmit, touched, errors, setFieldValue } = formik;
 
   return (
     <Modal onClose={onCancel} isLoading={isPending}>
       <h3 className="mb-6 text-center text-xl font-semibold text-bgPrimaryDark">
-        Create Department
+        {isEditMode ? "Edit Department" : "Create Department"}
       </h3>
 
-      <form onSubmit={handleSubmit} className="mx-auto w-full max-w-lg space-y-6">
+      <form onSubmit={formikSubmit} className="mx-auto w-full max-w-lg space-y-6">
         <div className="space-y-1">
           <label className="text-sm font-medium text-bgPrimaryDark">
             Department Name <span className="text-red-500">*</span>
@@ -93,6 +129,11 @@ const DepartmentForm = ({ onCancel, refetchData }: DepartmentFormProps) => {
           <label className="text-sm font-medium text-bgPrimaryDark">
             Assign Users <span className="text-red-500">*</span>
           </label>
+          {isEditMode && (
+            <p className="text-xs text-gray-500">
+              You can add users from other departments - they will be automatically moved.
+            </p>
+          )}
 
           {usersLoading && <p className="text-sm text-gray-400">Loading users…</p>}
           {usersError && <p className="text-sm text-red-500">Failed to load users</p>}
@@ -112,13 +153,21 @@ const DepartmentForm = ({ onCancel, refetchData }: DepartmentFormProps) => {
                 className="w-full rounded-xl border border-bgPrimary/30 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-bgPrimary/60"
               >
                 <option value="" disabled>
-                  {usersList.length === 0 ? "No users available" : "Select a user"}
+                  {usersList.length === 0 ? "No users available" : "Select a user to add"}
                 </option>
-                {usersList.map((user) => (
-                  <option key={user._id} value={user._id}>
-                    {user.name}
-                  </option>
-                ))}
+                {usersList
+                  .filter((user) => !values.users.includes(user._id))
+                  .map((user) => {
+                    // Show department info in edit mode
+                    const deptInfo = isEditMode && user.departments && user.departments.length > 0
+                      ? ` (currently in ${user.departments[0].name})`
+                      : "";
+                    return (
+                      <option key={user._id} value={user._id}>
+                        {user.name}{deptInfo}
+                      </option>
+                    );
+                  })}
               </select>
 
               <div className="flex flex-wrap gap-2">
@@ -166,7 +215,13 @@ const DepartmentForm = ({ onCancel, refetchData }: DepartmentFormProps) => {
           disabled={isPending || usersLoading}
           className="w-full rounded-full bg-bgPrimaryDark py-3 font-semibold text-white"
         >
-          {isPending ? "Creating..." : "Create Department"}
+          {isPending
+            ? isEditMode
+              ? "Updating..."
+              : "Creating..."
+            : isEditMode
+            ? "Update Department"
+            : "Create Department"}
         </button>
       </form>
     </Modal>

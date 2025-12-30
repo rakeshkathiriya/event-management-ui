@@ -39,3 +39,37 @@ export const useGetDepartments = () => {
     },
   });
 };
+
+export const useUpdateDepartment = () => {
+  return useMutation<CommonNullResponse, CommonApiError, { id: string } & CreateDepartmentPayload>({
+    mutationKey: ["useUpdateDepartment"],
+    mutationFn: async ({ id, ...payload }: { id: string } & CreateDepartmentPayload) => {
+      try {
+        const response = await api.patch<CommonNullResponse>(`/department/${id}`, payload);
+        return response.data;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          throw handleErrorResponse(error);
+        }
+        throw error;
+      }
+    },
+  });
+};
+
+export const useDeleteDepartment = () => {
+  return useMutation<CommonNullResponse, CommonApiError, string>({
+    mutationKey: ["useDeleteDepartment"],
+    mutationFn: async (departmentId: string) => {
+      try {
+        const response = await api.delete<CommonNullResponse>(`/department/${departmentId}`);
+        return response.data;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          throw handleErrorResponse(error);
+        }
+        throw error;
+      }
+    },
+  });
+};
