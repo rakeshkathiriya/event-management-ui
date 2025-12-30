@@ -1,8 +1,8 @@
 import { api } from "@/utils/axiosFactory";
 import { handleErrorResponse } from "@/utils/helper";
-import { CommonApiError } from "@/utils/types/common";
+import { CommonApiError, CommonNullResponse } from "@/utils/types/common";
 import { GetUsersResponse, MyAssignmentsResponse } from "@/utils/types/user";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import axios from "axios";
 
 export const useGetUsers = () => {
@@ -46,6 +46,23 @@ export const useGetMyAssignments = () => {
     queryFn: async () => {
       try {
         const response = await api.get<MyAssignmentsResponse>("/user/my-assignments");
+        return response.data;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          throw handleErrorResponse(error);
+        }
+        throw error;
+      }
+    },
+  });
+};
+
+export const useDeleteUser = () => {
+  return useMutation<CommonNullResponse, CommonApiError, string>({
+    mutationKey: ["useDeleteUser"],
+    mutationFn: async (userId: string) => {
+      try {
+        const response = await api.delete<CommonNullResponse>(`/user/${userId}`);
         return response.data;
       } catch (error) {
         if (axios.isAxiosError(error)) {

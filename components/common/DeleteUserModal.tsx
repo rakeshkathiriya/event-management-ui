@@ -1,0 +1,66 @@
+"use client";
+
+import Modal from "@/components/Model";
+import { AlertTriangle } from "lucide-react";
+
+interface DeleteUserModalProps {
+  userName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isDeleting: boolean;
+}
+
+const DeleteUserModal = ({ userName, onConfirm, onCancel, isDeleting }: DeleteUserModalProps) => {
+  return (
+    <Modal onClose={onCancel} isLoading={isDeleting}>
+      <div className="text-center space-y-6">
+        {/* Warning Icon */}
+        <div className="flex justify-center">
+          <div className="rounded-full bg-red-100 p-4">
+            <AlertTriangle className="h-12 w-12 text-red-600" />
+          </div>
+        </div>
+
+        {/* Title */}
+        <h3 className="text-xl font-semibold text-gray-900">Delete</h3>
+
+        {/* Warning Message */}
+        <div className="space-y-3 text-sm text-gray-600">
+          <p>
+            Are you sure you want to delete{" "}
+            <span className="font-semibold text-gray-900">{userName}</span>?
+          </p>
+          <p className="text-red-600 font-medium">
+            This action cannot be undone. This will permanently:
+          </p>
+          {/* <ul className="text-left list-disc list-inside space-y-1 text-gray-700">
+            <li>Remove user from all departments</li>
+            <li>Delete all program assignments</li>
+            <li>Remove user from all messages</li>
+            <li>Delete the user account</li>
+          </ul> */}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 justify-end pt-4">
+          <button
+            onClick={onCancel}
+            disabled={isDeleting}
+            className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isDeleting ? "Deleting..." : "Delete User"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+export default DeleteUserModal;
