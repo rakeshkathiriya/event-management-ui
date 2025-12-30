@@ -1,13 +1,15 @@
 "use client";
 
-import { BookOpen, Eye, Layers, Plus } from "lucide-react";
+import { BookOpen, Eye, Layers, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
-import { useGetPrograms } from "@/queries/program/program";
+import { useGetPrograms, useDeleteProgram } from "@/queries/program/program";
 import { useAuth } from "@/hooks/useAuth";
 import { Program } from "@/utils/types/program";
 import DescriptionModal from "@/components/common/DescriptionModal";
+import DeleteProgramModal from "@/components/common/DeleteProgramModal";
 import ProgramForm from "./ProgramForm";
 
 const AdminProgramList = () => {
@@ -15,10 +17,30 @@ const AdminProgramList = () => {
   const { isAdmin, isLoading: authLoading } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
+  const [editProgram, setEditProgram] = useState<Program | null>(null);
+  const [deleteProgram, setDeleteProgram] = useState<Program | null>(null);
   const { data, isLoading, error, refetch } = useGetPrograms();
+  const { mutate: deleteProg, isPending: isDeleting } = useDeleteProgram();
 
   const programs = data?.programs ?? [];
   const totalPrograms = data?.total ?? 0;
+
+  const handleDeleteProgram = (progId: string) => {
+    deleteProg(progId, {
+      onSuccess: (data) => {
+        if (data.status) {
+          toast.success(data.message ?? "Program deleted successfully");
+          refetch();
+          setDeleteProgram(null);
+        } else {
+          toast.error(data.message ?? "Failed to delete program");
+        }
+      },
+      onError: (error) => {
+        toast.error(error.message ?? "Something went wrong");
+      },
+    });
+  };
 
   // Redirect non-admin users
   useEffect(() => {
@@ -105,8 +127,26 @@ const AdminProgramList = () => {
           >
             <div className="absolute inset-x-0 top-0 mx-auto h-1 w-[95%] rounded-t-3xl bg-linear-to-r from-bgPrimaryDark to-bgPrimary" />
 
+            {/* Action Buttons - Top Right */}
+            <div className="absolute right-4 top-4 flex items-center gap-2">
+              <button
+                onClick={() => setEditProgram(program)}
+                className="p-2 rounded-lg text-bgPrimaryDark hover:bg-bgPrimary/20 transition"
+                title="Edit program"
+              >
+                <Pencil size={16} />
+              </button>
+              <button
+                onClick={() => setDeleteProgram(program)}
+                className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition"
+                title="Delete program"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-bgPrimaryDark line-clamp-2">
+              <h3 className="text-lg font-semibold text-bgPrimaryDark line-clamp-2 pr-20">
                 {program.title}
               </h3>
             </div>
@@ -156,6 +196,7 @@ const AdminProgramList = () => {
         ))}
       </div>
 
+      {/* CREATE MODAL */}
       {showAddModal && (
         <ProgramForm
           onCancel={() => setShowAddModal(false)}
@@ -163,6 +204,26 @@ const AdminProgramList = () => {
         />
       )}
 
+      {/* EDIT MODAL */}
+      {editProgram && (
+        <ProgramForm
+          program={editProgram}
+          onCancel={() => setEditProgram(null)}
+          refetchData={refetch}
+        />
+      )}
+
+      {/* DELETE MODAL */}
+      {deleteProgram && (
+        <DeleteProgramModal
+          programTitle={deleteProgram.title}
+          onConfirm={() => handleDeleteProgram(deleteProgram._id)}
+          onCancel={() => setDeleteProgram(null)}
+          isDeleting={isDeleting}
+        />
+      )}
+
+      {/* VIEW DETAILS MODAL */}
       {selectedProgram && (
         <DescriptionModal
           title={selectedProgram.title}
