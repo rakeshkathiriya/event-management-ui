@@ -1,20 +1,18 @@
 "use client";
 
-import dynamic from 'next/dynamic';
-import 'quill/dist/quill.snow.css';
-import { Eye, Edit3 } from 'lucide-react';
+import { quillFormats, quillModules } from "@/utils/editor/quillConfig";
+import { Edit3, Eye } from "lucide-react";
+import dynamic from "next/dynamic";
+import "quill/dist/quill.snow.css";
 
-const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
+const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 
 interface MergedPreviewProps {
   mergedContent: string;
   onContentChange: (content: string) => void;
 }
 
-const MergedPreview: React.FC<MergedPreviewProps> = ({
-  mergedContent,
-  onContentChange,
-}) => {
+const MergedPreview: React.FC<MergedPreviewProps> = ({ mergedContent, onContentChange }) => {
   return (
     <div className="space-y-4">
       {/* Header with Instructions */}
@@ -28,8 +26,9 @@ const MergedPreview: React.FC<MergedPreviewProps> = ({
               Final Merged Preview (Editable)
             </h4>
             <p className="text-xs text-blue-700 leading-relaxed">
-              This is the final content that will be saved when you approve. It's generated automatically
-              based on your accepted/rejected changes, but you can manually edit it below before approving.
+              This is the final content that will be saved when you approve. It's generated
+              automatically based on your accepted/rejected changes, but you can manually edit it
+              below before approving.
             </p>
           </div>
         </div>
@@ -47,19 +46,10 @@ const MergedPreview: React.FC<MergedPreviewProps> = ({
             theme="snow"
             value={mergedContent}
             onChange={onContentChange}
+            modules={quillModules}
+            formats={quillFormats}
             placeholder="Merged content will appear here..."
-            className="min-h-[300px]"
-            modules={{
-              toolbar: [
-                [{ header: [1, 2, 3, false] }],
-                ['bold', 'italic', 'underline', 'strike'],
-                [{ list: 'ordered' }, { list: 'bullet' }],
-                [{ align: [] }],
-                ['blockquote', 'code-block'],
-                ['link'],
-                ['clean'],
-              ],
-            }}
+            className="min-h-75"
           />
         </div>
       </div>
@@ -67,8 +57,13 @@ const MergedPreview: React.FC<MergedPreviewProps> = ({
       {/* Word Count */}
       <div className="text-right text-xs text-gray-500">
         {mergedContent
-          ? `${mergedContent.replace(/<[^>]*>/g, '').trim().split(/\s+/).length} words`
-          : '0 words'}
+          ? `${
+              mergedContent
+                .replace(/<[^>]*>/g, "")
+                .trim()
+                .split(/\s+/).length
+            } words`
+          : "0 words"}
       </div>
     </div>
   );
