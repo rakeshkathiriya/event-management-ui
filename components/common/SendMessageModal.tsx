@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSendMessage } from '@/queries/message/message';
 import { useGetDepartments } from '@/queries/department/department';
 import { getUserRole } from '@/utils/helper';
 import toast from 'react-hot-toast';
 import Modal from '@/components/Model';
-import { X } from 'lucide-react';
+import { X, Mic, MicOff } from 'lucide-react';
 
 interface SendMessageModalProps {
   isOpen: boolean;
@@ -17,6 +17,11 @@ export default function SendMessageModal({ isOpen, onClose }: SendMessageModalPr
   const [recipientType, setRecipientType] = useState<'Admin' | 'Department' | 'Broadcast'>('Department');
   const [selectedDepartments, setSelectedDepartments] = useState<Array<{ id: string; name: string }>>([]);
   const [message, setMessage] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [speechLang, setSpeechLang] = useState<'en-US' | 'gu-IN'>('en-US');
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const baseMessageRef = useRef<string>('');
+  const finalTranscriptRef = useRef<string>('');
 
   const userRole = getUserRole();
   const isAdmin = userRole === 'Admin';
@@ -29,8 +34,116 @@ export default function SendMessageModal({ isOpen, onClose }: SendMessageModalPr
       setRecipientType(isAdmin ? 'Broadcast' : 'Department');
       setSelectedDepartments([]);
       setMessage('');
+      // Stop speech recognition when modal closes
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        setIsListening(false);
+      }
     }
   }, [isOpen, isAdmin]);
+
+  // Cleanup speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleSpeechRecognition = () => {
+    // Check if running in secure context (required for speech recognition)
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      toast.error('Speech recognition requires HTTPS or localhost');
+      return;
+    }
+
+    // Check if browser supports speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      toast.error('Speech recognition is not supported in your browser');
+      return;
+    }
+
+    if (isListening) {
+      // Stop listening
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      // Start listening
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = speechLang;
+
+      // Save the current message as base and reset final transcript
+      baseMessageRef.current = message;
+      finalTranscriptRef.current = '';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        // Process all results fresh each time to avoid duplication
+        for (let i = 0; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        // Store final transcript for reference
+        finalTranscriptRef.current = finalTranscript;
+
+        // Build the complete message: base + final + interim (real-time)
+        const base = baseMessageRef.current;
+        const separator = base && (finalTranscript || interimTranscript) ? ' ' : '';
+        // Add "..." when there's interim speech to show user is still speaking
+        const dots = interimTranscript ? '...' : '';
+        const newMessage = base + separator + finalTranscript + interimTranscript + dots;
+
+        setMessage(newMessage);
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error('Speech recognition error:', event.error);
+        switch (event.error) {
+          case 'not-allowed':
+            toast.error('Microphone access denied. Please allow microphone access.');
+            break;
+          case 'network':
+            toast.error('Network error. Speech recognition may be blocked on this network. Try on mobile or a different network.');
+            break;
+          case 'no-speech':
+            toast.error('No speech detected. Please try again.');
+            break;
+          case 'audio-capture':
+            toast.error('No microphone found. Please connect a microphone.');
+            break;
+          case 'aborted':
+            // User aborted, no need to show error
+            break;
+          default:
+            toast.error('Speech recognition error. Please try again.');
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    }
+  };
 
   const handleAddDepartment = (deptId: string) => {
     const dept = departmentsData?.data?.departments?.find((d) => d._id === deptId);
@@ -179,15 +292,91 @@ export default function SendMessageModal({ isOpen, onClose }: SendMessageModalPr
 
       {/* Message Textarea */}
       <div className="mb-6">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Message:</label>
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type your message here..."
-          rows={6}
-          className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all"
-          maxLength={5000}
-        />
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-semibold text-gray-700">Message:</label>
+          <div className="flex items-center gap-2">
+            {/* Language Toggle */}
+            <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setSpeechLang('en-US')}
+                disabled={isListening}
+                className={`px-2.5 py-1 text-xs font-medium transition-all ${
+                  speechLang === 'en-US'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                } ${isListening ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title="English"
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                onClick={() => setSpeechLang('gu-IN')}
+                disabled={isListening}
+                className={`px-2.5 py-1 text-xs font-medium transition-all ${
+                  speechLang === 'gu-IN'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                } ${isListening ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title="ગુજરાતી (Gujarati)"
+              >
+                ગુજ
+              </button>
+            </div>
+            {/* Voice Button */}
+            <button
+              type="button"
+              onClick={toggleSpeechRecognition}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                isListening
+                  ? 'bg-red-100 text-red-600 hover:bg-red-200 animate-pulse'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={isListening ? 'Stop listening' : 'Start voice input'}
+            >
+              {isListening ? (
+                <>
+                  <MicOff size={16} />
+                  <span>Stop</span>
+                </>
+              ) : (
+                <>
+                  <Mic size={16} />
+                  <span>Voice</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+        <div className="relative">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder={
+              isListening
+                ? speechLang === 'gu-IN'
+                  ? 'સાંભળી રહ્યું છે... હવે બોલો'
+                  : 'Listening... Speak now'
+                : 'Type your message here...'
+            }
+            rows={6}
+            className={`w-full rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all ${
+              isListening
+                ? 'border-2 border-dashed border-red-400 bg-red-50'
+                : 'border border-solid border-gray-300'
+            }`}
+            maxLength={5000}
+          />
+          {isListening && (
+            <div className="absolute top-2 right-2">
+              <span className="flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </span>
+            </div>
+          )}
+        </div>
         <p className="text-sm text-gray-500 mt-1.5">{message.length} / 5000 characters</p>
       </div>
 
