@@ -44,6 +44,14 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
 
   // Approve - send incoming description as final content
   const handleApprove = async () => {
+    // FIX: Defensive check to ensure request._id exists before calling API
+    // This prevents "Cast to ObjectId failed for value 'undefined'" error
+    if (!request._id) {
+      console.error("❌ Cannot approve: request._id is missing", request);
+      setError("Invalid request ID. Cannot approve.");
+      return;
+    }
+
     try {
       // Use the requested description as the final content
       await onApprove(request._id, request.requestedDescription);
@@ -56,6 +64,13 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
 
   // Reject request
   const handleReject = async () => {
+    // FIX: Defensive check to ensure request._id exists before calling API
+    if (!request._id) {
+      console.error("❌ Cannot reject: request._id is missing", request);
+      setError("Invalid request ID. Cannot reject.");
+      return;
+    }
+
     if (!rejectionReason.trim()) {
       setError("Please provide a rejection reason");
       return;
@@ -71,6 +86,8 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
   };
 
   const isPending = request.status === "pending";
+  // FIX: Disable approve/reject buttons if request._id is missing
+  const isValidRequest = !!request._id;
 
   return (
     <motion.div
@@ -236,7 +253,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                   </button>
                   <button
                     onClick={handleReject}
-                    disabled={isRejecting || !rejectionReason.trim()}
+                    disabled={isRejecting || !rejectionReason.trim() || !isValidRequest}
                     className="rounded-lg px-4 sm:px-5 py-2 text-xs sm:text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <XCircle size={16} />
@@ -247,7 +264,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                 <>
                   <button
                     onClick={() => setShowRejectForm(true)}
-                    disabled={isApproving || isRejecting}
+                    disabled={isApproving || isRejecting || !isValidRequest}
                     className="rounded-lg px-4 sm:px-5 py-2 text-xs sm:text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <XCircle size={16} />
@@ -255,7 +272,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                   </button>
                   <button
                     onClick={handleApprove}
-                    disabled={isApproving || isRejecting}
+                    disabled={isApproving || isRejecting || !isValidRequest}
                     className="rounded-lg px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                   >
                     <CheckCircle size={18} />

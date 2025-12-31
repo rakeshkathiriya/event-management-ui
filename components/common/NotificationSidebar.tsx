@@ -48,7 +48,8 @@ export default function NotificationSidebar() {
       setModalType("message");
     } else if (notification.type === "new-request") {
       // Only open modal for new requests, not for reviewed notifications
-      // Validate requestId exists before opening modal
+      // VALIDATION: Ensure requestId exists before opening modal
+      // This prevents "Cast to ObjectId failed" error in backend
       if (!notification.requestId || notification.requestId === "undefined") {
         console.error("❌ Cannot open review modal: requestId is missing or invalid", notification);
         return;
@@ -273,6 +274,8 @@ export default function NotificationSidebar() {
         />
       )}
 
+      {/* CORRECT IMPLEMENTATION: Uses ReviewRequestModalWrapper as single entry point
+          Passes only requestId - the wrapper handles data fetching and validation */}
       {modalType === "review-request" && selectedNotification && (
         <ReviewRequestModalWrapper
           requestId={selectedNotification.requestId}
