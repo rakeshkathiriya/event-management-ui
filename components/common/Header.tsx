@@ -46,8 +46,8 @@ const Header = () => {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          <Link href="/main/events" className="text-white text-md hover:opacity-80">
-            Events
+          <Link href="/main/liveEvent" className="text-white text-md hover:opacity-80">
+            Live Event
           </Link>
 
           {/* USER-only navigation */}
@@ -65,6 +65,9 @@ const Header = () => {
           {/* Admin-only navigation */}
           {isAdmin && (
             <>
+              <Link href="/main/event" className="text-white text-md hover:opacity-80">
+                Event
+              </Link>
               <Link href="/main/programs" className="text-white text-md hover:opacity-80">
                 Programs
               </Link>

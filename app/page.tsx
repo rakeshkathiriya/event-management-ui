@@ -7,7 +7,7 @@ export default function Page() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/main/events");
+    router.replace("/main/liveEvent");
   }, [router]);
 
   return null;
