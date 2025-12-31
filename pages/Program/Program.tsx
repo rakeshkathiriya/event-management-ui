@@ -1,125 +1,142 @@
 "use client";
 
-import { Calendar, Plus } from "lucide-react";
 import { useState } from "react";
+import { Edit } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useGetAllEvents } from "@/queries/event/event";
+import { useGetProgramById } from "@/queries/program/program";
+import { useGetMyUpdateRequests } from "@/queries/programUpdateRequest/programUpdateRequest";
+import RequestUpdateDialog from "@/components/ProgramUpdateRequest/RequestUpdateDialog";
 import EventSidebar from "../event/Event";
-import CreateEventForm from "../event/EventForm";
-import CreateProgramForm from "./ProgramForm";
 
 const Program = () => {
-  const { isAdmin } = useAuth();
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEventModal, setShowEventModal] = useState(false);
+  const { isAdmin, isUser } = useAuth();
+
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
 
-  // Fetch all events for admin
-  const { data: allEventsData, isLoading: eventsLoading } = useGetAllEvents();
+  const { data: programData, isLoading: programLoading, isError: programError } = useGetProgramById(selectedProgramId ?? "");
+  const { data: myRequests } = useGetMyUpdateRequests();
 
-  // Sort events by date (nearest upcoming first)
-  const sortedEvents = allEventsData?.data
-    ? [...allEventsData.data].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
-    : [];
+  const program = programData;
+
+  const pendingRequest = myRequests?.find(
+    (req) =>
+      (typeof req.programId === "object" ? req.programId._id : req.programId) === selectedProgramId &&
+      req.status === "pending"
+  );
+
+  const handleProgramSelect = (programId: string) => {
+    setSelectedProgramId(programId);
+  };
 
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
-      <EventSidebar selectedEventId={selectedEventId} />
+      <EventSidebar selectedEventId={selectedEventId} onProgramSelect={handleProgramSelect} />
 
       {/* Main Content */}
       <div className="flex-1 p-8 bg-gray-50 overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold text-gray-800">
-            {isAdmin ? "Events" : "Programs"}
-          </h1>
-
-          {/* Admin-only create buttons */}
-          {isAdmin && (
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="group flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
-                style={{ background: "linear-gradient(135deg, #044241 0%, #2D6F6D 100%)" }}
-              >
-                <Plus size={18} className="transition-transform group-hover:rotate-90" />
-                Create Program
-              </button>
-
-              <button
-                onClick={() => setShowEventModal(true)}
-                className="group flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
-                style={{ background: "linear-gradient(135deg, #044241 0%, #2D6F6D 100%)" }}
-              >
-                <Plus size={18} className="transition-transform group-hover:rotate-90" />
-                Create Event
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Content area */}
-        {isAdmin ? (
-          // Admin: Show all events list
-          <div className="space-y-4">
-            {eventsLoading ? (
-              <div className="rounded-lg border border-gray-200 bg-white p-6 text-center text-gray-500">
-                Loading events...
-              </div>
-            ) : sortedEvents.length > 0 ? (
-              sortedEvents.map((event) => (
-                <button
-                  key={event._id}
-                  onClick={() => setSelectedEventId(event._id)}
-                  className={`w-full rounded-lg border bg-white p-6 text-left transition-all hover:shadow-md ${
-                    selectedEventId === event._id
-                      ? "border-[#2D6F6D] shadow-md ring-2 ring-[#2D6F6D]/20"
-                      : "border-gray-200"
-                  }`}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`rounded-full p-3 ${
-                      selectedEventId === event._id ? "bg-[#2D6F6D]/10" : "bg-gray-100"
-                    }`}>
-                      <Calendar className={`w-6 h-6 ${
-                        selectedEventId === event._id ? "text-[#2D6F6D]" : "text-gray-600"
-                      }`} />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-1">
-                        {event.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-2">
-                        {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
-                      </p>
-                      {event.description && (
-                        <p className="text-sm text-gray-500 line-clamp-2">
-                          {event.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-gray-500">
-                No events found. Create your first event to get started.
-              </div>
-            )}
-          </div>
-        ) : (
-          // User: Show empty state
+        {!selectedProgramId ? (
+          // Default state: No program selected
           <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-gray-500">
             View the event details in the sidebar
+          </div>
+        ) : programLoading ? (
+          // Loading state
+          <div className="flex justify-center items-center h-64">
+            <div className="text-gray-600">Loading program details…</div>
+          </div>
+        ) : programError || !program ? (
+          // Error state
+          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+            <p className="text-red-600">Failed to load program details</p>
+          </div>
+        ) : (
+          // Program details
+          <div className="max-w-5xl mx-auto">
+            {/* Header */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+              <h1 className="text-2xl font-semibold text-gray-800 mb-1">{program.title}</h1>
+              <p className="text-sm text-gray-500">Program Details</p>
+            </div>
+
+            {/* Pending Info */}
+            {pendingRequest && (
+              <div className="mb-6 border border-yellow-200 rounded-lg px-6 py-3 bg-yellow-50">
+                <p className="text-sm text-yellow-800">
+                  You already have a pending update request for this program. Admin review is in progress.
+                </p>
+              </div>
+            )}
+
+            {/* Content */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-8">
+              {/* Description */}
+              <section>
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Description</h3>
+                <div
+                  className="prose prose-sm max-w-none break-words"
+                  style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      program.description ||
+                      "<p class='text-gray-400 italic'>No description available</p>",
+                  }}
+                />
+              </section>
+
+              {/* Departments */}
+              <section>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Departments</h3>
+
+                {program.departments && program.departments.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {program.departments.map((dept: any) => (
+                      <span
+                        key={dept._id}
+                        className="rounded-full border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                      >
+                        {dept.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">No departments assigned</p>
+                )}
+              </section>
+            </div>
+
+            {/* Footer Actions */}
+            {isUser && !isAdmin && (
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowRequestDialog(true)}
+                  disabled={!!pendingRequest}
+                  className="rounded-lg px-5 py-2 text-sm font-medium text-white transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  style={{
+                    background: "linear-gradient(135deg, #044241 0%, #2D6F6D 100%)",
+                  }}
+                >
+                  <Edit size={16} />
+                  {pendingRequest ? "Request Pending" : "Request Update"}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Modals */}
-      {showAddModal && <CreateProgramForm onCancel={() => setShowAddModal(false)} />}
-      {showEventModal && <CreateEventForm onCancel={() => setShowEventModal(false)} />}
+      {/* Request Update Dialog */}
+      {showRequestDialog && selectedProgramId && program && (
+        <RequestUpdateDialog
+          programId={selectedProgramId}
+          programTitle={program.title}
+          currentDescription={program.description || ""}
+          onClose={() => setShowRequestDialog(false)}
+        />
+      )}
     </div>
   );
 };
