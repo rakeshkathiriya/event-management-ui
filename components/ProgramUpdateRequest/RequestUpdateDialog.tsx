@@ -1,6 +1,7 @@
 "use client";
 
 import { useSubmitUpdateRequest } from "@/queries/programUpdateRequest/programUpdateRequest";
+import { quillFormats, quillModules } from "@/utils/editor/quillConfig";
 import { X } from "lucide-react";
 import dynamic from "next/dynamic";
 import "quill/dist/quill.snow.css";
@@ -95,6 +96,8 @@ const RequestUpdateDialog: React.FC<RequestUpdateDialogProps> = ({
                 value={requestedDescription}
                 onChange={setRequestedDescription}
                 className="bg-white"
+                modules={quillModules}
+                formats={quillFormats}
                 placeholder="Enter the updated description..."
               />
             </div>
