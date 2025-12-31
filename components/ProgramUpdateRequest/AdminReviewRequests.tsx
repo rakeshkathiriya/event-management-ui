@@ -1,27 +1,24 @@
 "use client";
 
-import {
-  useApproveUpdateRequest,
-  useGetAllUpdateRequests,
-  useRejectUpdateRequest,
-} from "@/queries/programUpdateRequest/programUpdateRequest";
+import { useGetAllUpdateRequests } from "@/queries/programUpdateRequest/programUpdateRequest";
 import { format } from "date-fns";
 import { AlertCircle, CheckCircle, Clock, Eye, XCircle } from "lucide-react";
 import { useState } from "react";
-import { toast } from "react-hot-toast";
-import ReviewRequestModal from "./ReviewRequestModal";
+// FIX: Use ReviewRequestModalWrapper as single entry point for modal
+// This ensures requestId is always validated and API calls are consistent
+import ReviewRequestModalWrapper from "./ReviewRequestModalWrapper";
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected" | "expired";
 
 const AdminReviewRequests = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
+  // FIX: Only store requestId, not the full request object
+  // ReviewRequestModalWrapper will fetch the request data using this ID
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
   const { data: requests, isLoading } = useGetAllUpdateRequests(
     statusFilter === "all" ? undefined : statusFilter
   );
-  const { mutate: approveRequest, isPending: isApproving } = useApproveUpdateRequest();
-  const { mutate: rejectRequest, isPending: isRejecting } = useRejectUpdateRequest();
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -76,32 +73,10 @@ const AdminReviewRequests = () => {
     }
   };
 
-  const handleApprove = (requestId: string) => {
-    approveRequest(requestId, {
-      onSuccess: () => {
-        setSelectedRequestId(null);
-      },
-      onError: (error: any) => {
-        toast.error(error?.message || "Failed to approve request");
-      },
-    });
-  };
-
-  const handleReject = (requestId: string, reason?: string) => {
-    rejectRequest(
-      { requestId, rejectionReason: reason },
-      {
-        onSuccess: () => {
-          setSelectedRequestId(null);
-        },
-        onError: (error: any) => {
-          toast.error(error?.message || "Failed to reject request");
-        },
-      }
-    );
-  };
-
-  const selectedRequest = requests?.find((r) => r._id === selectedRequestId);
+  // FIX: Removed handleApprove and handleReject functions
+  // ReviewRequestModalWrapper handles all approve/reject logic internally
+  // This prevents the "Cast to ObjectId failed" error that occurred when
+  // requestId was passed incorrectly to the mutation
 
   if (isLoading) {
     return (
@@ -208,14 +183,16 @@ const AdminReviewRequests = () => {
       )}
 
       {/* Review Modal */}
-      {selectedRequest && (
-        <ReviewRequestModal
-          request={selectedRequest}
+      {/* FIX: Use ReviewRequestModalWrapper instead of ReviewRequestModal directly
+          This ensures:
+          1. requestId is validated before API calls
+          2. Request data is fetched consistently
+          3. Approve/reject mutations receive correct payload format
+          4. Same modal behavior from both page and notification sidebar */}
+      {selectedRequestId && (
+        <ReviewRequestModalWrapper
+          requestId={selectedRequestId}
           onClose={() => setSelectedRequestId(null)}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          isApproving={isApproving}
-          isRejecting={isRejecting}
         />
       )}
     </div>
