@@ -12,7 +12,7 @@ export default function ReactQueryProvider({ children }: { children: React.React
       {children}
 
       {/* ✅ Add Devtools here */}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {/* <ReactQueryDevtools initialIsOpen={false} /> */}
     </QueryClientProvider>
   );
 }
