@@ -23,7 +23,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Calendar, ChevronDown, ChevronRight, GripVertical, Layers, Plus } from "lucide-react";
 import { useState } from "react";
-import ShowEvent from "./ShowEvent";
 import AddProgramInDay from "./day";
 
 interface SortableProgramProps {
@@ -74,12 +73,11 @@ function SortableProgram({ program, onClick, isAdmin }: SortableProgramProps) {
 
 interface EventSidebarProps {
   selectedEventId?: string | null;
+  onProgramSelect: (programId: string) => void;
 }
 
-export default function EventSidebar({ selectedEventId }: EventSidebarProps) {
+export default function EventSidebar({ selectedEventId, onProgramSelect }: EventSidebarProps) {
   const { isAdmin } = useAuth();
-  const [showModal, setShowModal] = useState(false);
-  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [showDayModal, setShowDayModal] = useState(false);
@@ -214,10 +212,7 @@ export default function EventSidebar({ selectedEventId }: EventSidebarProps) {
                         <SortableProgram
                           key={program._id}
                           program={program}
-                          onClick={() => {
-                            setSelectedProgramId(program._id);
-                            setShowModal(true);
-                          }}
+                          onClick={() => onProgramSelect(program._id)}
                           isAdmin={isAdmin}
                         />
                       ))}
@@ -229,10 +224,6 @@ export default function EventSidebar({ selectedEventId }: EventSidebarProps) {
           ))}
         </div>
       </aside>
-      {/* Modal */}
-      {showModal && selectedProgramId && (
-        <ShowEvent programId={selectedProgramId} onClose={() => setShowModal(false)} />
-      )}
 
       {showDayModal && selectedDayId && (
         <AddProgramInDay

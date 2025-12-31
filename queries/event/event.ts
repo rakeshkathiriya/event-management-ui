@@ -53,3 +53,37 @@ export const useGetEventById = (eventId: string | null) => {
     enabled: !!eventId,
   });
 };
+
+export const useUpdateEvent = () => {
+  return useMutation<CommonNullResponse, CommonApiError, { id: string } & CreateEventPayload>({
+    mutationKey: ["useUpdateEvent"],
+    mutationFn: async ({ id, ...payload }) => {
+      try {
+        const response = await api.patch<CommonNullResponse>(`/event/${id}`, payload);
+        return response.data;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          throw handleErrorResponse(error);
+        }
+        throw error;
+      }
+    },
+  });
+};
+
+export const useDeleteEvent = () => {
+  return useMutation<CommonNullResponse, CommonApiError, string>({
+    mutationKey: ["useDeleteEvent"],
+    mutationFn: async (eventId: string) => {
+      try {
+        const response = await api.delete<CommonNullResponse>(`/event/${eventId}`);
+        return response.data;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          throw handleErrorResponse(error);
+        }
+        throw error;
+      }
+    },
+  });
+};
