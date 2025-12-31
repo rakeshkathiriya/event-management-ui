@@ -2,10 +2,10 @@
 
 import { useSubmitUpdateRequest } from "@/queries/programUpdateRequest/programUpdateRequest";
 import { quillFormats, quillModules } from "@/utils/editor/quillConfig";
-import { X } from "lucide-react";
+import { X, Mic, MicOff } from "lucide-react";
 import dynamic from "next/dynamic";
 import "quill/dist/quill.snow.css";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "react-hot-toast";
 
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
@@ -24,7 +24,155 @@ const RequestUpdateDialog: React.FC<RequestUpdateDialogProps> = ({
   onClose,
 }) => {
   const [requestedDescription, setRequestedDescription] = useState(currentDescription || "");
+  const [isListening, setIsListening] = useState(false);
+  const [speechLang, setSpeechLang] = useState<'en-US' | 'gu-IN'>('en-US');
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const baseDescriptionRef = useRef<string>('');
+  const finalTranscriptRef = useRef<string>('');
+  const editorContainerRef = useRef<HTMLDivElement>(null);
   const { mutate: submitRequest, isPending } = useSubmitUpdateRequest();
+
+  // Stop voice recording on keypress or click outside editor
+  useEffect(() => {
+    if (!isListening) return;
+
+    const stopRecognition = () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        setIsListening(false);
+      }
+    };
+
+    const handleKeyDown = () => {
+      stopRecognition();
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      if (editorContainerRef.current && !editorContainerRef.current.contains(e.target as Node)) {
+        stopRecognition();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('click', handleClick);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('click', handleClick);
+    };
+  }, [isListening]);
+
+  // Cleanup speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  // Helper to strip HTML tags and get plain text
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  };
+
+  const toggleSpeechRecognition = () => {
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      toast.error('Speech recognition requires HTTPS or localhost');
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      toast.error('Speech recognition is not supported in your browser');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = speechLang;
+
+      baseDescriptionRef.current = requestedDescription;
+      finalTranscriptRef.current = '';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = 0; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        finalTranscriptRef.current = finalTranscript;
+
+        const dots = interimTranscript ? '...' : '';
+        const fullTranscript = finalTranscript + interimTranscript + dots;
+
+        if (fullTranscript) {
+          const plainBase = stripHtml(baseDescriptionRef.current).trim();
+          const separator = plainBase ? ' ' : '';
+          let newContent = baseDescriptionRef.current;
+
+          if (newContent && newContent !== '<p><br></p>' && newContent.endsWith('</p>')) {
+            newContent = newContent.slice(0, -4) + separator + fullTranscript + '</p>';
+          } else if (newContent && newContent !== '<p><br></p>') {
+            newContent = newContent + separator + fullTranscript;
+          } else {
+            newContent = `<p>${fullTranscript}</p>`;
+          }
+
+          setRequestedDescription(newContent);
+        }
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error('Speech recognition error:', event.error);
+        switch (event.error) {
+          case 'not-allowed':
+            toast.error('Microphone access denied. Please allow microphone access.');
+            break;
+          case 'network':
+            toast.error('Network error. Speech recognition may be blocked on this network. Try on mobile or a different network.');
+            break;
+          case 'no-speech':
+            toast.error('No speech detected. Please try again.');
+            break;
+          case 'audio-capture':
+            toast.error('No microphone found. Please connect a microphone.');
+            break;
+          case 'aborted':
+            break;
+          default:
+            toast.error('Speech recognition error. Please try again.');
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    }
+  };
 
   const handleSubmit = () => {
     if (!requestedDescription || requestedDescription.trim() === "") {
@@ -87,15 +235,87 @@ const RequestUpdateDialog: React.FC<RequestUpdateDialogProps> = ({
           </div> */}
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Requested Description <span className="text-red-500">*</span>
-            </label>
-            <div className="quill-wrapper rounded-xl border border-gray-300 overflow-hidden">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Requested Description <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-2">
+                {/* Language Toggle */}
+                <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setSpeechLang('en-US')}
+                    disabled={isListening}
+                    className={`px-2.5 py-1 text-xs font-medium transition-all ${
+                      speechLang === 'en-US'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-100'
+                    } ${isListening ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title="English"
+                  >
+                    EN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSpeechLang('gu-IN')}
+                    disabled={isListening}
+                    className={`px-2.5 py-1 text-xs font-medium transition-all ${
+                      speechLang === 'gu-IN'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-100'
+                    } ${isListening ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title="ગુજરાતી (Gujarati)"
+                  >
+                    ગુજ
+                  </button>
+                </div>
+                {/* Voice Button */}
+                <button
+                  type="button"
+                  onClick={toggleSpeechRecognition}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    isListening
+                      ? 'bg-red-100 text-red-600 hover:bg-red-200 animate-pulse'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title={isListening ? 'Stop listening' : 'Start voice input'}
+                >
+                  {isListening ? (
+                    <>
+                      <MicOff size={16} />
+                      <span>Stop</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic size={16} />
+                      <span>Voice</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            <div
+              ref={editorContainerRef}
+              className={`quill-wrapper rounded-xl overflow-hidden transition-all ${
+                isListening
+                  ? 'border-2 border-dashed border-red-400 bg-red-50'
+                  : 'border border-solid border-gray-300'
+              }`}
+            >
+              {isListening && (
+                <div className="bg-red-50 px-3 py-1.5 text-xs text-red-600 flex items-center gap-2 border-b border-red-200">
+                  <span className="flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                  {speechLang === 'gu-IN' ? 'સાંભળી રહ્યું છે... હવે બોલો' : 'Listening... Speak now'}
+                </div>
+              )}
               <ReactQuill
                 theme="snow"
                 value={requestedDescription}
                 onChange={setRequestedDescription}
-                className="bg-white"
+                className={isListening ? "bg-red-50" : "bg-white"}
                 modules={quillModules}
                 formats={quillFormats}
                 placeholder="Enter the updated description..."
