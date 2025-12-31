@@ -22,6 +22,7 @@ export default function SendMessageModal({ isOpen, onClose }: SendMessageModalPr
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const baseMessageRef = useRef<string>('');
   const finalTranscriptRef = useRef<string>('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const userRole = getUserRole();
   const isAdmin = userRole === 'Admin';
@@ -50,6 +51,38 @@ export default function SendMessageModal({ isOpen, onClose }: SendMessageModalPr
       }
     };
   }, []);
+
+  // Stop voice recording on keypress or click outside textarea
+  useEffect(() => {
+    if (!isListening) return;
+
+    const stopRecognition = () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        setIsListening(false);
+      }
+    };
+
+    const handleKeyDown = () => {
+      // Stop recording on any keypress
+      stopRecognition();
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      // Stop recording if click is outside the textarea
+      if (textareaRef.current && !textareaRef.current.contains(e.target as Node)) {
+        stopRecognition();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('click', handleClick);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('click', handleClick);
+    };
+  }, [isListening]);
 
   const toggleSpeechRecognition = () => {
     // Check if running in secure context (required for speech recognition)
@@ -351,6 +384,7 @@ export default function SendMessageModal({ isOpen, onClose }: SendMessageModalPr
         </div>
         <div className="relative">
           <textarea
+            ref={textareaRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={
