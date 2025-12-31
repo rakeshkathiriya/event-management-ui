@@ -1,44 +1,72 @@
 "use client";
 
 import Modal from "@/components/Model";
-import { useCreateEvent } from "@/queries/event/event";
+import { useCreateEvent, useUpdateEvent } from "@/queries/event/event";
 import { eventSchema } from "@/utils/validationSchema/eventSchema";
 import { useFormik } from "formik";
 import { toast } from "react-toastify";
 
-interface CreateEventFormProps {
+interface EventFormProps {
+  event?: {
+    _id: string;
+    title: string;
+    description?: string;
+    startDate: string;
+    endDate: string;
+  };
   onCancel: () => void;
+  refetchData?: () => void;
 }
 
-export const CreateEventForm = ({ onCancel }: CreateEventFormProps) => {
-  const { mutate, isPending } = useCreateEvent();
+export const CreateEventForm = ({ event, onCancel, refetchData }: EventFormProps) => {
+  const { mutate: createEvent, isPending: isCreating } = useCreateEvent();
+  const { mutate: updateEvent, isPending: isUpdating } = useUpdateEvent();
+
+  const isPending = isCreating || isUpdating;
+  const isEditMode = !!event;
 
   const formik = useFormik({
     initialValues: {
-      title: "",
-      description: "",
-      startDate: "",
-      endDate: "",
+      title: event?.title || "",
+      description: event?.description || "",
+      startDate: event?.startDate ? new Date(event.startDate).toISOString().split('T')[0] : "",
+      endDate: event?.endDate ? new Date(event.endDate).toISOString().split('T')[0] : "",
     },
     validationSchema: eventSchema,
     onSubmit: (values) => {
-      mutate(
-        {
-          title: values.title,
-          description: values.description,
-          startDate: new Date(values.startDate),
-          endDate: new Date(values.endDate),
-        },
-        {
+      const payload = {
+        title: values.title,
+        description: values.description,
+        startDate: new Date(values.startDate),
+        endDate: new Date(values.endDate),
+      };
+
+      if (isEditMode) {
+        updateEvent(
+          { id: event._id, ...payload },
+          {
+            onSuccess: () => {
+              toast.success("Event updated successfully");
+              refetchData?.();
+              onCancel();
+            },
+            onError: () => {
+              toast.error("Failed to update event");
+            },
+          }
+        );
+      } else {
+        createEvent(payload, {
           onSuccess: () => {
             toast.success("Event created successfully");
+            refetchData?.();
             onCancel();
           },
           onError: () => {
             toast.error("Failed to create event");
           },
-        }
-      );
+        });
+      }
     },
   });
 
@@ -46,7 +74,9 @@ export const CreateEventForm = ({ onCancel }: CreateEventFormProps) => {
 
   return (
     <Modal onClose={onCancel} isLoading={isPending}>
-      <h3 className="mb-6 text-center text-xl font-semibold text-bgPrimaryDark">Create Event</h3>
+      <h3 className="mb-6 text-center text-xl font-semibold text-bgPrimaryDark">
+        {isEditMode ? "Edit Event" : "Create Event"}
+      </h3>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Event Title */}
@@ -119,7 +149,7 @@ export const CreateEventForm = ({ onCancel }: CreateEventFormProps) => {
           disabled={isPending}
           className="w-full rounded-full bg-bgPrimaryDark py-3 font-semibold text-white transition hover:opacity-90"
         >
-          {isPending ? "Creating..." : "Create Event"}
+          {isPending ? (isEditMode ? "Updating..." : "Creating...") : (isEditMode ? "Update Event" : "Create Event")}
         </button>
       </form>
     </Modal>
