@@ -1,14 +1,14 @@
 "use client";
 
+import { useAuth } from "@/hooks/useAuth";
+import { useProgramUpdateNotifications } from "@/hooks/useProgramUpdateNotifications";
 import {
-  useGetUpdateRequestById,
   useApproveUpdateRequest,
+  useGetUpdateRequestById,
   useRejectUpdateRequest,
 } from "@/queries/programUpdateRequest/programUpdateRequest";
-import ReviewRequestModal from "./ReviewRequestModal";
-import { useProgramUpdateNotifications } from "@/hooks/useProgramUpdateNotifications";
-import { useAuth } from "@/hooks/useAuth";
 import toast from "react-hot-toast";
+import ReviewRequestModal from "./ReviewRequestModal";
 
 interface ReviewRequestModalWrapperProps {
   requestId: string;
@@ -35,9 +35,7 @@ const ReviewRequestModalWrapper: React.FC<ReviewRequestModalWrapperProps> = ({
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div className="bg-white px-8 py-6 rounded-lg shadow-2xl max-w-md">
           <h3 className="text-lg font-semibold text-red-600 mb-2">Invalid Request</h3>
-          <p className="text-sm text-gray-700 mb-4">
-            The request ID is invalid. Please try again.
-          </p>
+          <p className="text-sm text-gray-700 mb-4">The request ID is invalid. Please try again.</p>
           <button
             onClick={onClose}
             className="w-full rounded-lg px-4 py-2 bg-gray-200 hover:bg-gray-300 transition"
@@ -74,7 +72,7 @@ const ReviewRequestModalWrapper: React.FC<ReviewRequestModalWrapperProps> = ({
         <div className="bg-white px-8 py-6 rounded-lg shadow-2xl max-w-md">
           <h3 className="text-lg font-semibold text-red-600 mb-2">Error Loading Request</h3>
           <p className="text-sm text-gray-700 mb-4">
-            {error instanceof Error ? error.message : 'Failed to load update request'}
+            {error instanceof Error ? error.message : "Failed to load update request"}
           </p>
           <button
             onClick={onClose}
@@ -113,38 +111,38 @@ const ReviewRequestModalWrapper: React.FC<ReviewRequestModalWrapperProps> = ({
   // Success callback for approval
   const handleApproveSuccess = () => {
     // Manually update notification to show green tick for admin
-    const reviewedBy = user?.name || 'Admin';
-    updateNotificationToReviewed(requestId, 'approved', reviewedBy);
-    toast.success('Request approved successfully');
+    const reviewedBy = user?.name || "Admin";
+    updateNotificationToReviewed(requestId, "approved", reviewedBy);
+    toast.success("Request approved successfully");
     onClose();
   };
 
   // Error callback for approval
   const handleApproveError = (error: any) => {
-    console.error('Approval error:', error);
+    console.error("Approval error:", error);
     if (error.response?.status === 409) {
       // Conflict: Already reviewed by another admin
-      toast.error('This request has already been reviewed by another admin');
+      toast.error("This request has already been reviewed by another admin");
       onClose();
     } else {
-      toast.error('Failed to approve request. Please try again.');
+      toast.error("Failed to approve request. Please try again.");
     }
   };
 
   // Success callback for rejection
   const handleRejectSuccess = () => {
     // Manually update notification to show red cross for admin
-    const reviewedBy = user?.name || 'Admin';
+    const reviewedBy = user?.name || "Admin";
     // Get rejection reason from the request data (it should be updated after mutation)
-    updateNotificationToReviewed(requestId, 'rejected', reviewedBy);
-    toast.success('Request rejected successfully');
+    updateNotificationToReviewed(requestId, "rejected", reviewedBy);
+    toast.success("Request rejected successfully");
     onClose();
   };
 
   // Error callback for rejection
   const handleRejectError = (error: any) => {
-    console.error('Rejection error:', error);
-    toast.error('Failed to reject request. Please try again.');
+    console.error("Rejection error:", error);
+    toast.error("Failed to reject request. Please try again.");
   };
 
   return (
