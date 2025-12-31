@@ -12,6 +12,7 @@ import { useCreateProgram, useUpdateProgram } from "@/queries/program/program";
 import type { CreateProgramPayload, Program } from "@/utils/types/program";
 import { programSchema } from "@/utils/validationSchema/programSchema";
 
+import { quillFormats, quillModules } from "@/utils/editor/quillConfig";
 import { Eye, X } from "lucide-react";
 import "quill/dist/quill.snow.css";
 
@@ -84,7 +85,14 @@ const ProgramForm = ({ onCancel, refetchData, program }: ProgramFormProps) => {
     onSubmit: handleSubmit,
   });
 
-  const { values, errors, touched, handleChange, handleSubmit: formikHandleSubmit, setFieldValue } = formik;
+  const {
+    values,
+    errors,
+    touched,
+    handleChange,
+    handleSubmit: formikHandleSubmit,
+    setFieldValue,
+  } = formik;
 
   // Get selected departments for preview
   const selectedDepartments = departments.filter((dept) => values.departmentIds.includes(dept._id));
@@ -124,6 +132,8 @@ const ProgramForm = ({ onCancel, refetchData, program }: ProgramFormProps) => {
                 theme="snow"
                 value={values.description}
                 onChange={(val) => setFieldValue("description", val)}
+                modules={quillModules}
+                formats={quillFormats}
                 className="bg-white"
               />
             </div>
