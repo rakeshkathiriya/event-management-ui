@@ -1,7 +1,7 @@
 "use client";
 
 import { ProgramUpdateRequest } from "@/queries/programUpdateRequest/programUpdateRequest";
-import { hasTextLevelChange } from "@/utils/lineDiff";
+import { applyChanges, computeDiff, Change } from "@/utils/diffMergeEngine";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { AlertCircle, ArrowLeft, CheckCircle, X, XCircle } from "lucide-react";
@@ -25,222 +25,10 @@ interface ReviewRequestModalProps {
   onRejectError?: (error: Error) => void;
 }
 
-/**
- * Represents a single line in the diff comparison (IntelliJ-style)
- */
-interface DiffLine {
-  id: string;
-  type: "added" | "removed" | "unchanged" | "modified";
-  currentHtml: string | null; // HTML from current version (null if added)
-  requestedHtml: string | null; // HTML from requested version (null if removed)
-  currentLineNumber: number;
-  requestedLineNumber: number;
-  textContent: string; // For display
-}
-
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
-
-/**
- * Extract individual lines from HTML, handling nested elements like <li> inside <ul>
- * FIX: This prevents list duplication by treating each <li> as a separate line
- */
-const extractLines = (html: string): Array<{ html: string; text: string }> => {
-  const lines: Array<{ html: string; text: string }> = [];
-
-  if (!html || typeof window === "undefined") return lines;
-
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, "text/html");
-
-  // Process each top-level element
-  Array.from(doc.body.children).forEach((element) => {
-    // If it's a list (ul/ol), extract each list item individually
-    if (element.tagName === "UL" || element.tagName === "OL") {
-      Array.from(element.children).forEach((li) => {
-        if (li.tagName === "LI" && li.textContent?.trim()) {
-          lines.push({
-            html: li.outerHTML.trim(),
-            text: li.textContent.trim(),
-          });
-        }
-      });
-    } else {
-      // For other elements (p, h1, etc.), treat as single line
-      if (element.textContent?.trim()) {
-        lines.push({
-          html: element.outerHTML.trim(),
-          text: element.textContent.trim(),
-        });
-      }
-    }
-  });
-
-  return lines;
-};
-
-/**
- * Get HTML tag name from an HTML string
- */
-const getTagName = (html: string): string => {
-  const match = html.match(/^<(\w+)/);
-  return match ? match[1].toUpperCase() : "";
-};
-
-/**
- * ENHANCED LINE-BY-LINE DIFF COMPARISON (IntelliJ IDEA Style)
- *
- * Compares HTML content line by line and returns a list of all lines
- * with their status (added, removed, unchanged, modified).
- *
- * ENHANCEMENT: Uses hasTextLevelChange utility for safer modification detection
- *
- * Handles:
- * - ADDED: New lines in requested
- * - REMOVED: Lines deleted from current
- * - MODIFIED: Lines with same tag but different content (e.g., heading text changed)
- * - UNCHANGED: Identical lines
- */
-const computeLineByLineDiff = (currentHtml: string, requestedHtml: string): DiffLine[] => {
-  const lines: DiffLine[] = [];
-
-  // Guard against missing data or SSR
-  if (typeof window === "undefined") {
-    console.warn("[LineByLineDiff] Skipping - running on server");
-    return lines;
-  }
-
-  // Extract individual lines (including nested <li> elements)
-  const currentLines = extractLines(currentHtml || "");
-  const requestedLines = extractLines(requestedHtml || "");
-
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("📊 [LineByLineDiff] STARTING");
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log(`[LineByLineDiff] Current lines: ${currentLines.length}`);
-  console.log(`[LineByLineDiff] Requested lines: ${requestedLines.length}`);
-
-  // Create maps for O(1) lookup
-  const exactMap = new Map<string, number[]>();
-  const byTag = new Map<string, Array<{ html: string; text: string; index: number }>>();
-
-  currentLines.forEach((line, idx) => {
-    // Exact match map
-    if (!exactMap.has(line.html)) {
-      exactMap.set(line.html, []);
-    }
-    exactMap.get(line.html)!.push(idx);
-
-    // Tag-based map for detecting modifications
-    const tag = getTagName(line.html);
-    if (!byTag.has(tag)) {
-      byTag.set(tag, []);
-    }
-    byTag.get(tag)!.push({ ...line, index: idx });
-  });
-
-  const processedCurrentIndices = new Set<number>();
-  let detectedChanges = 0;
-
-  // Process each line from requested version
-  requestedLines.forEach((requestedLine, reqIdx) => {
-    const matchIndices = exactMap.get(requestedLine.html);
-
-    if (matchIndices && matchIndices.length > 0) {
-      // UNCHANGED: Exact match found
-      const currentIdx = matchIndices[0];
-      processedCurrentIndices.add(currentIdx);
-
-      lines.push({
-        id: crypto.randomUUID(),
-        type: "unchanged",
-        currentHtml: requestedLine.html,
-        requestedHtml: requestedLine.html,
-        currentLineNumber: currentIdx,
-        requestedLineNumber: reqIdx,
-        textContent: requestedLine.text,
-      });
-      console.log(
-        `[LineByLineDiff] ✓ Line ${reqIdx} unchanged: ${requestedLine.text.substring(0, 40)}`
-      );
-    } else {
-      // Check if this might be a MODIFICATION (same tag, different content)
-      const tag = getTagName(requestedLine.html);
-      const sameTagLines = byTag.get(tag) || [];
-      const unprocessedSameTag = sameTagLines.find((cl) => !processedCurrentIndices.has(cl.index));
-
-      // ENHANCEMENT: Use hasTextLevelChange utility for safer detection
-      if (
-        unprocessedSameTag &&
-        tag !== "LI" &&
-        hasTextLevelChange(unprocessedSameTag.text, requestedLine.text)
-      ) {
-        // MODIFIED: Same tag type but different content (e.g., heading text changed)
-        detectedChanges++;
-        processedCurrentIndices.add(unprocessedSameTag.index);
-
-        lines.push({
-          id: crypto.randomUUID(),
-          type: "modified",
-          currentHtml: unprocessedSameTag.html,
-          requestedHtml: requestedLine.html,
-          currentLineNumber: unprocessedSameTag.index,
-          requestedLineNumber: reqIdx,
-          textContent: requestedLine.text,
-        });
-        console.log(
-          `[LineByLineDiff] ✏️  Line ${reqIdx} MODIFIED: "${unprocessedSameTag.text.substring(
-            0,
-            30
-          )}" → "${requestedLine.text.substring(0, 30)}"`
-        );
-      } else {
-        // ADDED: Completely new line
-        detectedChanges++;
-
-        lines.push({
-          id: crypto.randomUUID(),
-          type: "added",
-          currentHtml: null,
-          requestedHtml: requestedLine.html,
-          currentLineNumber: -1,
-          requestedLineNumber: reqIdx,
-          textContent: requestedLine.text,
-        });
-        console.log(
-          `[LineByLineDiff] ✨ Line ${reqIdx} ADDED: ${requestedLine.text.substring(0, 40)}`
-        );
-      }
-    }
-  });
-
-  // Find REMOVED lines (exist in current but not in requested)
-  currentLines.forEach((currentLine, currIdx) => {
-    if (!processedCurrentIndices.has(currIdx)) {
-      detectedChanges++;
-
-      lines.push({
-        id: crypto.randomUUID(),
-        type: "removed",
-        currentHtml: currentLine.html,
-        requestedHtml: null,
-        currentLineNumber: currIdx,
-        requestedLineNumber: -1,
-        textContent: currentLine.text,
-      });
-      console.log(`[LineByLineDiff] 🗑️  Line REMOVED: ${currentLine.text.substring(0, 40)}`);
-    }
-  });
-
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log(
-    `[LineByLineDiff] ✅ RESULT: ${lines.length} total lines, ${detectedChanges} changed`
-  );
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
-  return lines;
-};
+// (Removed old extractLines, getTagName, computeLineByLineDiff - replaced with diffMergeEngine)
 
 // ============================================================================
 // MAIN COMPONENT
@@ -293,162 +81,60 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
   const isPending = request.status === "pending";
 
   // ============================================================================
-  // LINE-BY-LINE DIFF COMPUTATION (IntelliJ IDEA Style)
+  // DIFF COMPUTATION (New Block-Based System)
   // ============================================================================
 
   /**
-   * Compute line-by-line diff between current and requested descriptions
-   * Returns ALL lines with their status (unchanged, added, modified)
-   * Arrows will show for EVERY line that is added or modified
+   * Compute changes between current and requested descriptions
+   * Uses new block-based diff engine for accurate change detection
    */
-  const diffLines = useMemo(() => {
+  const changes = useMemo((): Change[] => {
     // Ensure data exists before computing diff
     if (!request._id) {
-      console.warn("[LineByLineDiff] Request not ready yet (no _id)");
+      console.warn("[DiffCompute] Request not ready yet (no _id)");
       return [];
     }
 
     if (!request.requestedDescription) {
-      console.warn("[LineByLineDiff] No requested description in request");
+      console.warn("[DiffCompute] No requested description in request");
       return [];
     }
 
-    console.log("[LineByLineDiff] Computing for request:", request._id);
-    console.log(
-      "[LineByLineDiff] Current snapshot length:",
-      request.currentDescriptionSnapshot?.length || 0
-    );
-    console.log(
-      "[LineByLineDiff] Requested description length:",
-      request.requestedDescription?.length || 0
-    );
+    console.log("[DiffCompute] Computing for request:", request._id);
 
-    const lines = computeLineByLineDiff(
+    const detectedChanges = computeDiff(
       request.currentDescriptionSnapshot || "",
       request.requestedDescription || ""
     );
 
-    const changedCount = lines.filter((l) => l.type === "added" || l.type === "modified").length;
-    console.log(`[LineByLineDiff] Result: ${lines.length} total lines, ${changedCount} changed`);
-    return lines;
+    console.log(`[DiffCompute] Result: ${detectedChanges.length} changes detected`);
+    return detectedChanges;
   }, [request._id, request.currentDescriptionSnapshot, request.requestedDescription]);
 
   // ============================================================================
-  // MERGED OUTPUT GENERATION
+  // MERGED OUTPUT GENERATION (New System)
   // ============================================================================
 
   /**
-   * Generate final merged HTML content
+   * Generate final merged HTML content using new merge engine
    *
-   * Logic:
-   * 1. Start with current description
-   * 2. Apply accepted changes:
-   *    - ADDED: Append new content
-   *    - MODIFIED: Replace old content with new
-   *    - REMOVED: Delete content
-   *
-   * Properly handles add/modify/remove without duplication
+   * Applies accepted changes at correct indexes
+   * Handles ADD (insert), MODIFY (replace), REMOVE (delete)
    */
   const mergedHtml = useMemo(() => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(
-      request.currentDescriptionSnapshot || "<div></div>",
-      "text/html"
-    );
+    const acceptedIds = new Set(Object.keys(acceptedChanges));
 
-    // Extract current elements for modification/removal tracking
-    const currentElements = extractLines(doc.body.innerHTML);
-
-    // Track which current elements to remove
-    const elementsToRemove = new Set<number>();
-
-    // Process each accepted change
-    diffLines.forEach((line) => {
-      if (!acceptedChanges[line.id]) return;
-
-      if (line.type === "added") {
-        // ADDED: Append new content
-        if (line.requestedHtml?.startsWith("<li")) {
-          // Append to existing list
-          const existingList = doc.body.querySelector("ul, ol");
-          if (existingList) {
-            const tempDiv = document.createElement("div");
-            tempDiv.innerHTML = line.requestedHtml;
-            const liElement = tempDiv.firstElementChild;
-            if (liElement) {
-              existingList.appendChild(liElement.cloneNode(true));
-            }
-          }
-        } else {
-          // Append other elements
-          const tempDiv = document.createElement("div");
-          tempDiv.innerHTML = line.requestedHtml!;
-          if (tempDiv.firstElementChild) {
-            doc.body.appendChild(tempDiv.firstElementChild.cloneNode(true));
-          }
-        }
-      } else if (line.type === "modified") {
-        // MODIFIED: Replace old with new
-        elementsToRemove.add(line.currentLineNumber);
-
-        if (line.requestedHtml?.startsWith("<li")) {
-          // Replace list item
-          const existingList = doc.body.querySelector("ul, ol");
-          if (existingList) {
-            const listItems = Array.from(existingList.children);
-            const targetItem = listItems[line.currentLineNumber];
-            if (targetItem) {
-              const tempDiv = document.createElement("div");
-              tempDiv.innerHTML = line.requestedHtml;
-              const newLiElement = tempDiv.firstElementChild;
-              if (newLiElement) {
-                existingList.replaceChild(newLiElement.cloneNode(true), targetItem);
-              }
-            }
-          }
-        } else {
-          // Replace other elements (headings, paragraphs)
-          const allElements = Array.from(doc.body.children);
-          let elementIndex = 0;
-          for (const elem of allElements) {
-            if (elem.tagName !== "UL" && elem.tagName !== "OL") {
-              if (elementIndex === line.currentLineNumber) {
-                const tempDiv = document.createElement("div");
-                tempDiv.innerHTML = line.requestedHtml!;
-                const newElement = tempDiv.firstElementChild;
-                if (newElement) {
-                  doc.body.replaceChild(newElement.cloneNode(true), elem);
-                }
-                break;
-              }
-              elementIndex++;
-            }
-          }
-        }
-      } else if (line.type === "removed") {
-        // REMOVED: Mark for deletion
-        elementsToRemove.add(line.currentLineNumber);
-      }
-    });
-
-    // Remove marked elements
-    if (
-      elementsToRemove.size > 0 &&
-      diffLines.some((l) => acceptedChanges[l.id] && l.type === "removed")
-    ) {
-      const existingList = doc.body.querySelector("ul, ol");
-      if (existingList) {
-        const listItems = Array.from(existingList.children);
-        listItems.forEach((item, idx) => {
-          if (elementsToRemove.has(idx)) {
-            item.remove();
-          }
-        });
-      }
+    if (acceptedIds.size === 0) {
+      // No changes accepted, return current as-is
+      return request.currentDescriptionSnapshot || "";
     }
 
-    return doc.body.innerHTML;
-  }, [request.currentDescriptionSnapshot, diffLines, acceptedChanges]);
+    return applyChanges(
+      request.currentDescriptionSnapshot || "",
+      request.requestedDescription || "",
+      acceptedIds
+    );
+  }, [request.currentDescriptionSnapshot, request.requestedDescription, acceptedChanges]);
 
   // ============================================================================
   // INTERACTION HANDLERS
@@ -557,8 +243,7 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
     requestId: request._id,
     currentLength: request.currentDescriptionSnapshot?.length || 0,
     requestedLength: request.requestedDescription?.length || 0,
-    totalLines: diffLines.length,
-    changedLines: diffLines.filter((l) => l.type === "added" || l.type === "modified").length,
+    totalChanges: changes.length,
   });
 
   return (
@@ -726,14 +411,9 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                 <div className="w-3 h-3 rounded-full bg-green-500" />
                 <h3 className="font-semibold text-green-800 text-sm">Line-by-Line Changes</h3>
                 <span className="ml-auto text-xs text-green-600 font-medium">
-                  {
-                    diffLines.filter(
-                      (l) => l.type === "added" || l.type === "modified" || l.type === "removed"
-                    ).length
-                  }{" "}
-                  change(s)
+                  {changes.length} change(s)
                 </span>
-                {diffLines.length > 0 && (
+                {changes.length > 0 && (
                   <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
                     ← Arrow on every change
                   </span>
@@ -747,45 +427,38 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                   Click the ← arrow next to each changed line to accept it into Final Changes
                 </p>
                 <div className="space-y-2">
-                  {diffLines.length === 0 ? (
+                  {changes.length === 0 ? (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-                      <p className="text-sm font-medium text-yellow-800 mb-2">No lines to review</p>
+                      <p className="text-sm font-medium text-yellow-800 mb-2">No changes detected</p>
                       <p className="text-xs text-yellow-700">
-                        The requested description is empty or contains no parseable content.
+                        The requested description is identical to the current version.
                       </p>
                     </div>
                   ) : (
-                    diffLines.map((line) => {
-                      const isAccepted = acceptedChanges[line.id];
-                      const isChanged =
-                        line.type === "added" ||
-                        line.type === "modified" ||
-                        line.type === "removed";
-
-                      // ONLY show changed lines (hide unchanged lines for cleaner UI)
-                      if (!isChanged) return null;
+                    changes.map((change) => {
+                      const isAccepted = acceptedChanges[change.id];
 
                       // Determine colors based on type
                       const getBorderColor = () => {
                         if (isAccepted) return "border-green-500";
-                        if (line.type === "added") return "border-blue-300 hover:border-blue-500";
-                        if (line.type === "modified")
+                        if (change.type === "added") return "border-blue-300 hover:border-blue-500";
+                        if (change.type === "modified")
                           return "border-yellow-400 hover:border-yellow-600";
-                        if (line.type === "removed") return "border-red-400 hover:border-red-600";
+                        if (change.type === "removed") return "border-red-400 hover:border-red-600";
                         return "border-gray-300";
                       };
 
                       const getBgColor = () => {
                         if (isAccepted) return "bg-green-50";
-                        if (line.type === "added") return "bg-blue-50";
-                        if (line.type === "modified") return "bg-yellow-50";
-                        if (line.type === "removed") return "bg-red-50";
+                        if (change.type === "added") return "bg-blue-50";
+                        if (change.type === "modified") return "bg-yellow-50";
+                        if (change.type === "removed") return "bg-red-50";
                         return "bg-white";
                       };
 
                       return (
                         <div
-                          key={line.id}
+                          key={change.id}
                           className={`rounded-lg border-2 transition-all ${getBgColor()} ${getBorderColor()} shadow-md`}
                         >
                           <div className="p-3 flex items-start gap-3">
@@ -794,23 +467,23 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                               {!isAccepted ? (
                                 <button
                                   onClick={() => {
-                                    console.log(`🎯 Accepting ${line.type} line:`, line.id);
-                                    handleAcceptChange(line.id);
+                                    console.log(`🎯 Accepting ${change.type} change:`, change.id);
+                                    handleAcceptChange(change.id);
                                   }}
                                   className={`group relative p-3 rounded-full text-white transition-all hover:scale-110 active:scale-95 shadow-xl border-2 border-white ${
-                                    line.type === "added"
+                                    change.type === "added"
                                       ? "bg-blue-600 hover:bg-blue-700"
-                                      : line.type === "modified"
+                                      : change.type === "modified"
                                       ? "bg-yellow-600 hover:bg-yellow-700"
                                       : "bg-red-600 hover:bg-red-700"
                                   }`}
                                   title={`Click to ${
-                                    line.type === "removed"
+                                    change.type === "removed"
                                       ? "confirm removal"
                                       : "accept this change"
                                   }`}
                                   disabled={!isPending}
-                                  aria-label={`Accept ${line.type}`}
+                                  aria-label={`Accept ${change.type}`}
                                 >
                                   <ArrowLeft
                                     size={20}
@@ -821,8 +494,8 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                               ) : (
                                 <button
                                   onClick={() => {
-                                    console.log("🗑️ Discarding line:", line.id);
-                                    handleDiscardChange(line.id);
+                                    console.log("🗑️ Discarding change:", change.id);
+                                    handleDiscardChange(change.id);
                                   }}
                                   className="p-2.5 rounded-full bg-gray-500 hover:bg-gray-600 text-white transition-all hover:scale-110 active:scale-95 shadow-xl border-2 border-white"
                                   title="Click to undo this change"
@@ -834,25 +507,25 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                               )}
                             </div>
 
-                            {/* Line Content */}
+                            {/* Change Content */}
                             <div className="flex-1 min-w-0">
                               {/* Status Badge */}
                               <div className="mb-2">
                                 {!isAccepted ? (
                                   <>
-                                    {line.type === "added" && (
+                                    {change.type === "added" && (
                                       <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded">
                                         <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
                                         NEW - Click ← to add
                                       </span>
                                     )}
-                                    {line.type === "modified" && (
+                                    {change.type === "modified" && (
                                       <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded">
                                         <span className="w-2 h-2 bg-yellow-600 rounded-full animate-pulse"></span>
                                         MODIFIED - Click ← to replace
                                       </span>
                                     )}
-                                    {line.type === "removed" && (
+                                    {change.type === "removed" && (
                                       <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded">
                                         <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>
                                         REMOVED - Click ← to delete
@@ -867,39 +540,39 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                                 )}
                               </div>
 
-                              {/* Show OLD content for MODIFIED lines */}
-                              {line.type === "modified" && line.currentHtml && !isAccepted && (
+                              {/* Show OLD content for MODIFIED changes */}
+                              {change.type === "modified" && change.originalBlock && !isAccepted && (
                                 <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded">
                                   <p className="text-xs font-semibold text-red-700 mb-1">
                                     Old version (will be replaced):
                                   </p>
                                   <div
                                     className="ql-editor text-sm line-through opacity-60 [&>ul]:list-disc [&>ul]:pl-6 [&>ol]:list-decimal [&>ol]:pl-6 [&>ul>li]:mb-1 [&>ol>li]:mb-1 [&>h1]:text-lg [&>h1]:font-bold [&>h1]:mb-2 [&>h2]:text-base [&>h2]:font-bold [&>h2]:mb-1 [&>h3]:text-sm [&>h3]:font-bold [&>h3]:mb-1 [&>p]:mb-1"
-                                    dangerouslySetInnerHTML={{ __html: line.currentHtml }}
+                                    dangerouslySetInnerHTML={{ __html: change.originalBlock.html }}
                                   />
                                 </div>
                               )}
 
                               {/* NEW content */}
-                              {line.type !== "removed" && line.requestedHtml && (
+                              {change.type !== "removed" && change.incomingBlock && (
                                 <>
-                                  {line.type === "modified" && !isAccepted && (
+                                  {change.type === "modified" && !isAccepted && (
                                     <p className="text-xs font-semibold text-green-700 mb-1">
                                       New version:
                                     </p>
                                   )}
                                   <div
                                     className="ql-editor [&>ul]:list-disc [&>ul]:pl-6 [&>ol]:list-decimal [&>ol]:pl-6 [&>ul>li]:mb-1 [&>ol>li]:mb-1 [&>h1]:text-xl [&>h1]:font-bold [&>h1]:mb-2 [&>h2]:text-lg [&>h2]:font-bold [&>h2]:mb-2 [&>h3]:text-base [&>h3]:font-bold [&>h3]:mb-1 [&>p]:mb-2 text-gray-800 break-words overflow-wrap-anywhere"
-                                    dangerouslySetInnerHTML={{ __html: line.requestedHtml }}
+                                    dangerouslySetInnerHTML={{ __html: change.incomingBlock.html }}
                                   />
                                 </>
                               )}
 
                               {/* REMOVED content */}
-                              {line.type === "removed" && line.currentHtml && (
+                              {change.type === "removed" && change.originalBlock && (
                                 <div
                                   className="ql-editor line-through opacity-70 text-red-700 [&>ul]:list-disc [&>ul]:pl-6 [&>ol]:list-decimal [&>ol]:pl-6 [&>ul>li]:mb-1 [&>ol>li]:mb-1 [&>h1]:text-xl [&>h1]:font-bold [&>h1]:mb-2 [&>h2]:text-lg [&>h2]:font-bold [&>h2]:mb-2 [&>h3]:text-base [&>h3]:font-bold [&>h3]:mb-1 [&>p]:mb-2 break-words overflow-wrap-anywhere"
-                                  dangerouslySetInnerHTML={{ __html: line.currentHtml }}
+                                  dangerouslySetInnerHTML={{ __html: change.originalBlock.html }}
                                 />
                               )}
                             </div>
