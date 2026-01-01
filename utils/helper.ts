@@ -28,6 +28,23 @@ export const getUserRole = () => {
   }
 };
 
+export const getUserFromToken = () => {
+  const token = localStorage.getItem("accessToken");
+
+  if (!token) return null;
+
+  try {
+    const decoded: DecodedToken = jwtDecode(token);
+    return {
+      _id: decoded.id,
+      role: decoded.role,
+    };
+  } catch (error) {
+    console.error("Invalid Token:", error);
+    return null;
+  }
+};
+
 export const getToken = (): string | null => {
   if (typeof window === "undefined") return null;
 

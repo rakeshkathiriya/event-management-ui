@@ -229,7 +229,9 @@ const AdminProgramList = () => {
           title={selectedProgram.title}
           description={selectedProgram.description}
           departments={selectedProgram.departments}
+          programId={selectedProgram._id}
           onClose={() => setSelectedProgram(null)}
+          onRoleUpdate={refetch}
         />
       )}
     </div>
