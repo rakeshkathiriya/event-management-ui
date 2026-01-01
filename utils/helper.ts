@@ -38,6 +38,7 @@ export const getUserFromToken = () => {
     return {
       _id: decoded.id,
       role: decoded.role,
+      name: decoded.name || "User", // Fallback for old tokens without name
     };
   } catch (error) {
     console.error("Invalid Token:", error);

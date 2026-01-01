@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { getToken } from '@/utils/helper';
-import toast from 'react-hot-toast';
+import { getToken } from "@/utils/helper";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { io, Socket } from "socket.io-client";
 
 interface SocketContextType {
   socket: Socket | null;
@@ -41,16 +41,16 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
 
     // Also listen for storage events (for multi-tab sync)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'accessToken') {
+      if (e.key === "accessToken") {
         checkToken();
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
 
@@ -58,7 +58,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
   useEffect(() => {
     // Cleanup previous socket if it exists
     if (socket) {
-      console.log('🔄 Cleaning up previous socket connection');
+      console.log("🔄 Cleaning up previous socket connection");
       socket.removeAllListeners();
       socket.disconnect();
       setSocket(null);
@@ -67,53 +67,53 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
 
     // If no token, don't connect
     if (!tokenState) {
-      console.log('❌ No token found, socket will not connect');
+      console.log("❌ No token found, socket will not connect");
       return;
     }
 
-    console.log('🔌 Token detected, initializing socket connection...');
+    console.log("🔌 Token detected, initializing socket connection...");
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
     const socketInstance = io(backendUrl, {
       auth: { token: tokenState },
-      transports: ['websocket', 'polling'],
+      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: 5,
     });
 
-    socketInstance.on('connect', () => {
-      console.log('✅ Socket connected:', socketInstance.id);
+    socketInstance.on("connect", () => {
+      console.log("✅ Socket connected:", socketInstance.id);
       setIsConnected(true);
-      toast.success('Connected to real-time messaging');
+      toast.success("Connected to real-time messaging");
     });
 
-    socketInstance.on('disconnect', (reason) => {
-      console.log('❌ Socket disconnected:', reason);
+    socketInstance.on("disconnect", (reason) => {
+      console.log("❌ Socket disconnected:", reason);
       setIsConnected(false);
     });
 
-    socketInstance.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error.message);
+    socketInstance.on("connect_error", (error) => {
+      console.error("❌ Socket connection error:", error.message);
       setIsConnected(false);
     });
 
-    socketInstance.on('reconnect', (attemptNumber) => {
+    socketInstance.on("reconnect", (attemptNumber) => {
       console.log(`✅ Reconnected after ${attemptNumber} attempts`);
-      toast.success('Reconnected to messaging');
+      toast.success("Reconnected to messaging");
     });
 
-    socketInstance.on('reconnect_failed', () => {
-      console.error('❌ Failed to reconnect to socket server');
-      toast.error('Failed to connect to real-time messaging');
+    socketInstance.on("reconnect_failed", () => {
+      console.error("❌ Failed to reconnect to socket server");
+      toast.error("Failed to connect to real-time messaging");
     });
 
     setSocket(socketInstance);
 
     return () => {
-      console.log('🧹 Cleaning up socket on unmount');
+      console.log("🧹 Cleaning up socket on unmount");
       socketInstance.removeAllListeners();
       socketInstance.disconnect();
     };
@@ -135,7 +135,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
 export const useSocket = () => {
   const context = useContext(SocketContext);
   if (context === undefined) {
-    throw new Error('useSocket must be used within a SocketProvider');
+    throw new Error("useSocket must be used within a SocketProvider");
   }
   return context;
 };

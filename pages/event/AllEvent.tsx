@@ -338,9 +338,9 @@ const AllEvent = () => {
                           className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden hover:border-bgPrimary/30 transition-all duration-300 shadow-sm hover:shadow-md"
                         >
                           {/* Day Header */}
-                          <button
+                          <div
                             onClick={() => toggleDay(day._id)}
-                            className="w-full flex items-center justify-between p-5 hover:bg-gradient-to-r hover:from-gray-50 hover:to-transparent transition-all"
+                            className="w-full flex items-center justify-between p-5 hover:bg-gradient-to-r hover:from-gray-50 hover:to-transparent transition-all cursor-pointer"
                           >
                             <div className="flex items-center gap-4">
                               <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-bgPrimary/20 to-bgPrimaryDark/20 flex items-center justify-center">
@@ -389,7 +389,7 @@ const AllEvent = () => {
                                 )}
                               </div>
                             </div>
-                          </button>
+                          </div>
 
                           {/* Programs List */}
                           {expandedDayIds.has(day._id) && (

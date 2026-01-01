@@ -150,11 +150,24 @@ const Program = () => {
               </div>
             )}
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-8">
+            <div className="bg-white rounded-lg shadow-sm border min-w-5xl overflow-scroll border-gray-200 p-6 space-y-8">
               <section>
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Description</h3>
+
                 <div
-                  className="prose prose-sm max-w-none"
+                  className="
+        prose prose-sm max-w-none
+        break-words
+        whitespace-normal
+        overflow-hidden
+        [&_ul]:pl-5
+        [&_ol]:pl-5
+        [&_li]:break-words
+        [&_p]:break-words
+        [&_h1]:break-words
+        [&_h2]:break-words
+        [&_h3]:break-words
+      "
                   dangerouslySetInnerHTML={{
                     __html:
                       program.description ||

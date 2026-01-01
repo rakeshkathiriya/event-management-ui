@@ -13,7 +13,7 @@ const Header = () => {
   const { socket, isConnected } = useSocket();
   const { data: unreadData } = useGetUnreadCount();
   const queryClient = useQueryClient();
-  const { isAdmin, isUser } = useAuth();
+  const { isAdmin, isUser, user } = useAuth();
   const unreadCount = unreadData?.data?.count || 0;
   const router = useRouter();
 
@@ -83,13 +83,27 @@ const Header = () => {
             </>
           )}
 
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            className="text-white hover:opacity-80 flex items-center gap-2"
-          >
-            <LogOut size={20} />
-          </button>
+          {/* User Info & Logout */}
+          <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/20">
+            {user && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/20 text-white font-semibold text-sm">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-white font-medium text-sm">{user.name}</span>
+                  <span className="text-white/70 text-xs">{user.role}</span>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={handleLogout}
+              className="text-white hover:opacity-80 flex items-center gap-2 transition-opacity"
+              title="Logout"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
         </nav>
       </div>
     </header>

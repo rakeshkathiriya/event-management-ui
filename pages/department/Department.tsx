@@ -8,12 +8,14 @@ import { toast } from "react-toastify";
 import DeleteDepartmentModal from "@/components/common/DeleteDepartmentModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useDeleteDepartment, useGetDepartments } from "@/queries/department/department";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Department as DepartmentType } from "@/utils/types/department";
 import DepartmentForm from "./DepartmentForm";
 
 const Department = () => {
   const router = useRouter();
   const { isAdmin, isLoading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editDepartment, setEditDepartment] = useState<DepartmentType | null>(null);
   const [deleteDepartment, setDeleteDepartment] = useState<DepartmentType | null>(null);
@@ -23,12 +25,29 @@ const Department = () => {
   const departments = data?.data?.departments ?? [];
   const totalUsers = departments.reduce((sum, d) => sum + d.totalUsers, 0);
 
+  // Delete handler with optimized cache invalidation
   const handleDeleteDepartment = (deptId: string) => {
     deleteDept(deptId, {
       onSuccess: (data) => {
         if (data.status) {
           toast.success(data.message ?? "Department deleted successfully");
-          refetch();
+
+          // Check if this was the last department
+          const currentDepartmentCount = departments.length;
+
+          if (currentDepartmentCount <= 1) {
+            // Last item: Force immediate invalidation and refetch
+            queryClient.invalidateQueries({
+              queryKey: ["useGetDepartments"],
+              refetchType: 'active'
+            });
+          } else {
+            // Multiple items: Standard invalidation
+            queryClient.invalidateQueries({
+              queryKey: ["useGetDepartments"]
+            });
+          }
+
           setDeleteDepartment(null);
         } else {
           toast.error(data.message ?? "Failed to delete department");

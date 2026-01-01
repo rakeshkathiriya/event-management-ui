@@ -175,6 +175,25 @@ export const useProgramUpdateNotifications = () => {
       console.log(`✅ Updated cache for program ${data.programId}`);
     };
 
+    const handleProgramCreated = (data: any) => {
+      console.log("✅ Program created:", data);
+
+      // Invalidate program lists to fetch the new program
+      queryClient.invalidateQueries({ queryKey: ["getAllPrograms"] });
+
+      console.log(`✅ Invalidated cache for new program ${data.programId}`);
+    };
+
+    const handleProgramDeleted = (data: any) => {
+      console.log("✅ Program deleted:", data);
+
+      // Invalidate program lists to remove the deleted program
+      queryClient.invalidateQueries({ queryKey: ["getAllPrograms"] });
+      queryClient.invalidateQueries({ queryKey: ["getProgramById", data.programId] });
+
+      console.log(`✅ Invalidated cache for deleted program ${data.programId}`);
+    };
+
     const handleNotificationAutoDismissed = (data: any) => {
       console.log("✅ Auto-dismissing notification:", data);
 
@@ -210,6 +229,14 @@ export const useProgramUpdateNotifications = () => {
     socket.on("program:updated", handleProgramUpdated);
     console.log("✅ Registered 'program:updated' listener");
 
+    // Listen for program creation (ALL USERS - for real-time sync)
+    socket.on("program:created", handleProgramCreated);
+    console.log("✅ Registered 'program:created' listener");
+
+    // Listen for program deletion (ALL USERS - for real-time sync)
+    socket.on("program:deleted", handleProgramDeleted);
+    console.log("✅ Registered 'program:deleted' listener");
+
     // Cleanup function with specific handler references
     return () => {
       console.log("🧹 Cleaning up program update notification listeners");
@@ -219,6 +246,8 @@ export const useProgramUpdateNotifications = () => {
       }
       socket.off("program:update-reviewed", handleUpdateReviewed);
       socket.off("program:updated", handleProgramUpdated);
+      socket.off("program:created", handleProgramCreated);
+      socket.off("program:deleted", handleProgramDeleted);
     };
   }, [socket, isConnected, isAdmin]);
 
