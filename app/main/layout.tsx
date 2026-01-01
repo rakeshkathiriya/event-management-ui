@@ -3,6 +3,7 @@
 import Header from "@/components/common/Header";
 import NotificationSidebar from "@/components/common/NotificationSidebar";
 import FloatingMessageButton from "@/components/common/FloatingMessageButton";
+import FloatingFooter from "@/components/common/FloatingFooter";
 import { useAuth } from "@/hooks/useAuth";
 import { useProgramUpdateNotifications } from "@/hooks/useProgramUpdateNotifications";
 
@@ -24,11 +25,12 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   return (
     <div className="relative">
       <Header />
-      <div className="mr-80 pt-16">
+      <div className="mr-80 pt-16 pb-20">
         {children}
       </div>
       <NotificationSidebar />
       <FloatingMessageButton />
+      <FloatingFooter />
     </div>
   );
 }
