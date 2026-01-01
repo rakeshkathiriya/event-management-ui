@@ -1,18 +1,22 @@
 import { api } from "@/utils/axiosFactory";
 import { handleErrorResponse } from "@/utils/helper";
 import { CommonNullResponse } from "@/utils/types/common";
-import { CreateProgramPayload } from "@/utils/types/program";
+import {
+  CreateProgramPayload,
+  CreateProgramResponse,
+  UpdateProgramResponse,
+} from "@/utils/types/program";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 export const useCreateProgram = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<CommonNullResponse, Error, CreateProgramPayload>({
+  return useMutation<CreateProgramResponse, Error, CreateProgramPayload>({
     mutationKey: ["useCreateProgram"],
     mutationFn: async (payload: CreateProgramPayload) => {
       try {
-        const response = await api.post<CommonNullResponse>("/program", payload);
+        const response = await api.post<CreateProgramResponse>("/program", payload);
         return response.data;
       } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -52,11 +56,11 @@ export const useGetPrograms = () => {
 export const useUpdateProgram = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<CommonNullResponse, Error, { id: string } & CreateProgramPayload>({
+  return useMutation<UpdateProgramResponse, Error, { id: string } & CreateProgramPayload>({
     mutationKey: ["useUpdateProgram"],
     mutationFn: async ({ id, ...payload }) => {
       try {
-        const response = await api.patch<CommonNullResponse>(`/program/${id}`, payload);
+        const response = await api.patch<UpdateProgramResponse>(`/program/${id}`, payload);
         return response.data;
       } catch (error) {
         if (axios.isAxiosError(error)) {

@@ -2,18 +2,25 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getToken, getUserRole } from "@/utils/helper";
+import { getToken, getUserRole, getUserFromToken } from "@/utils/helper";
 
 export type UserRole = "Admin" | "User" | null;
+
+interface User {
+  _id: string;
+  role: string;
+}
 
 export const useAuth = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const token = getToken();
     const role = getUserRole();
+    const userData = getUserFromToken();
 
     if (!token) {
       router.replace("/auth/login");
@@ -21,6 +28,7 @@ export const useAuth = () => {
     }
 
     setUserRole(role as UserRole);
+    setUser(userData);
     setIsLoading(false);
   }, [router]);
 
@@ -33,5 +41,6 @@ export const useAuth = () => {
     isAdmin,
     isUser,
     isAuthenticated: !!userRole,
+    user,
   };
 };

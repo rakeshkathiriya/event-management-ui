@@ -16,7 +16,6 @@ export const quillFormats = [
   "strike",
   "header",
   "list",
-  "bullet",
   "align",
   "link",
 ];
