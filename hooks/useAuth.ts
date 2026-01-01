@@ -9,6 +9,7 @@ export type UserRole = "Admin" | "User" | null;
 interface User {
   _id: string;
   role: string;
+  name: string;
 }
 
 export const useAuth = () => {

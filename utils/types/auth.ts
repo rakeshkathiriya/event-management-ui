@@ -20,5 +20,6 @@ export interface LoginUserResponse extends CommonResponse {
 export interface DecodedToken {
   id: string;
   role: string;
+  name?: string; // Optional to support old tokens
   exp?: number;
 }
