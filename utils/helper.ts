@@ -23,7 +23,23 @@ export const getUserRole = () => {
     const decoded: DecodedToken = jwtDecode(token);
     return decoded.role || null;
   } catch (error) {
-    console.error("Invalid Token:", error);
+    return null;
+  }
+};
+
+export const getUserFromToken = () => {
+  const token = localStorage.getItem("accessToken");
+
+  if (!token) return null;
+
+  try {
+    const decoded: DecodedToken = jwtDecode(token);
+    return {
+      _id: decoded.id,
+      role: decoded.role,
+      name: decoded.name || "User", // Fallback for old tokens without name
+    };
+  } catch (error) {
     return null;
   }
 };
@@ -42,7 +58,6 @@ export const getToken = (): string | null => {
 
     return token;
   } catch (error) {
-    console.error("Invalid Token:", error);
     return null;
   }
 };

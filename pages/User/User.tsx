@@ -8,12 +8,14 @@ import { toast } from "react-toastify";
 import { useGetAllUsers, useDeleteUser } from "@/queries/user/user";
 import type { User as UserType } from "@/utils/types/user";
 import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import UserRegistrationForm from "./UserCreationForm";
 import DeleteUserModal from "@/components/common/DeleteUserModal";
 
 const User = () => {
   const router = useRouter();
   const { isAdmin, isLoading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteModalUser, setDeleteModalUser] = useState<UserType | null>(null);
   const { data, isLoading, error, refetch } = useGetAllUsers();
@@ -21,13 +23,29 @@ const User = () => {
 
   const users: UserType[] = data?.data?.users ?? [];
 
-  // Delete handler
+  // Delete handler with optimized cache invalidation
   const handleDeleteUser = (userId: string) => {
     deleteUser(userId, {
       onSuccess: (data) => {
         if (data.status) {
           toast.success(data.message ?? "User deleted successfully");
-          refetch();
+
+          // Check if this was the last user
+          const currentUserCount = users.length;
+
+          if (currentUserCount <= 1) {
+            // Last item: Force immediate invalidation and refetch
+            queryClient.invalidateQueries({
+              queryKey: ["useGetAllUsers"],
+              refetchType: 'active'
+            });
+          } else {
+            // Multiple items: Standard invalidation
+            queryClient.invalidateQueries({
+              queryKey: ["useGetAllUsers"]
+            });
+          }
+
           setDeleteModalUser(null);
         } else {
           toast.error(data.message ?? "Failed to delete user");

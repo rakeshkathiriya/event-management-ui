@@ -20,6 +20,41 @@ export interface ProgramUpdateNotification {
   type: "new-request" | "reviewed";
 }
 
+interface UpdateRequestData {
+  requestId?: string;
+  programId: string;
+  requestedBy: string;
+  requestedByRole: string;
+  message: string;
+  createdAt?: string | Date;
+}
+
+interface UpdateReviewedData {
+  requestId: string;
+  programId: string;
+  status: "approved" | "rejected";
+  reviewedBy: string;
+  rejectionReason?: string;
+  message: string;
+  reviewedAt?: string | Date;
+}
+
+interface ProgramUpdatedData {
+  programId: string;
+  description: string;
+}
+
+
+interface ProgramDeletedData {
+  programId: string;
+}
+
+interface NotificationDismissedData {
+  referenceId: string;
+  notificationType: string;
+  reason: string;
+}
+
 export const useProgramUpdateNotifications = () => {
   const { socket, isConnected } = useSocket();
   const queryClient = useQueryClient();
@@ -68,15 +103,12 @@ export const useProgramUpdateNotifications = () => {
   useEffect(() => {
     if (!socket || !isConnected) return;
 
-    console.log(`🔔 Setting up program update notification listeners (isAdmin: ${isAdmin})`);
 
     // Define handler functions so we can properly remove them later
-    const handleUpdateRequest = (data: any) => {
-      console.log("✅ Received program update request notification:", data);
-
+    const handleUpdateRequest = (data: UpdateRequestData) => {
       const notification: ProgramUpdateNotification = {
         id: data.requestId || Date.now().toString(),
-        requestId: data.requestId,
+        requestId: data.requestId || Date.now().toString(),
         programId: data.programId,
         requestedBy: data.requestedBy,
         requestedByRole: data.requestedByRole,
@@ -102,9 +134,7 @@ export const useProgramUpdateNotifications = () => {
       queryClient.invalidateQueries({ queryKey: ["updateRequestStats"] });
     };
 
-    const handleUpdateReviewed = (data: any) => {
-      console.log("✅ Received program update review notification:", data);
-
+    const handleUpdateReviewed = (data: UpdateReviewedData) => {
       const notification: ProgramUpdateNotification = {
         id: data.requestId || Date.now().toString(),
         requestId: data.requestId,
@@ -154,11 +184,9 @@ export const useProgramUpdateNotifications = () => {
       }
     };
 
-    const handleProgramUpdated = (data: any) => {
-      console.log("✅ Program updated:", data);
-
+    const handleProgramUpdated = (data: ProgramUpdatedData) => {
       // Update React Query cache for this specific program
-      queryClient.setQueryData(["getProgramById", data.programId], (oldData: any) => {
+      queryClient.setQueryData(["getProgramById", data.programId], (oldData: unknown) => {
         if (oldData) {
           return {
             ...oldData,
@@ -172,12 +200,20 @@ export const useProgramUpdateNotifications = () => {
       queryClient.invalidateQueries({ queryKey: ["getAllPrograms"] });
       queryClient.invalidateQueries({ queryKey: ["getProgramById", data.programId] });
 
-      console.log(`✅ Updated cache for program ${data.programId}`);
     };
 
-    const handleNotificationAutoDismissed = (data: any) => {
-      console.log("✅ Auto-dismissing notification:", data);
+    const handleProgramCreated = () => {
+      // Invalidate program lists to fetch the new program
+      queryClient.invalidateQueries({ queryKey: ["getAllPrograms"] });
+    };
 
+    const handleProgramDeleted = (data: ProgramDeletedData) => {
+      // Invalidate program lists to remove the deleted program
+      queryClient.invalidateQueries({ queryKey: ["getAllPrograms"] });
+      queryClient.invalidateQueries({ queryKey: ["getProgramById", data.programId] });
+    };
+
+    const handleNotificationAutoDismissed = (data: NotificationDismissedData) => {
       // Remove the notification from the UI
       setNotifications((prev) =>
         prev.filter(
@@ -189,38 +225,40 @@ export const useProgramUpdateNotifications = () => {
         )
       );
 
-      console.log(`✅ Auto-dismissed notification for request ${data.referenceId}`);
     };
 
     // Listen for new program update requests (ADMIN only)
     if (isAdmin) {
       socket.on("program:update-request", handleUpdateRequest);
-      console.log("✅ Registered 'program:update-request' listener");
 
       // Listen for auto-dismiss events (ADMIN only)
       socket.on("notification:auto-dismissed", handleNotificationAutoDismissed);
-      console.log("✅ Registered 'notification:auto-dismissed' listener");
     }
 
     // Listen for update request review notifications (ALL USERS)
     socket.on("program:update-reviewed", handleUpdateReviewed);
-    console.log("✅ Registered 'program:update-reviewed' listener");
 
     // Listen for program updates (ALL USERS - for real-time sync)
     socket.on("program:updated", handleProgramUpdated);
-    console.log("✅ Registered 'program:updated' listener");
+
+    // Listen for program creation (ALL USERS - for real-time sync)
+    socket.on("program:created", handleProgramCreated);
+
+    // Listen for program deletion (ALL USERS - for real-time sync)
+    socket.on("program:deleted", handleProgramDeleted);
 
     // Cleanup function with specific handler references
     return () => {
-      console.log("🧹 Cleaning up program update notification listeners");
       if (isAdmin) {
         socket.off("program:update-request", handleUpdateRequest);
         socket.off("notification:auto-dismissed", handleNotificationAutoDismissed);
       }
       socket.off("program:update-reviewed", handleUpdateReviewed);
       socket.off("program:updated", handleProgramUpdated);
+      socket.off("program:created", handleProgramCreated);
+      socket.off("program:deleted", handleProgramDeleted);
     };
-  }, [socket, isConnected, isAdmin]);
+  }, [socket, isConnected, isAdmin, queryClient]);
 
   return {
     notifications,

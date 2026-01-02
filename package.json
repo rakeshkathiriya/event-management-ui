@@ -17,6 +17,7 @@
     "@tanstack/react-query-devtools": "^5.91.1",
     "axios": "^1.13.2",
     "date-fns": "^4.1.0",
+    "diff-match-patch": "^1.0.5",
     "dotenv": "^17.2.3",
     "formik": "^2.4.9",
     "framer-motion": "^12.23.26",
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",
+    "@types/diff-match-patch": "^1.0.36",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

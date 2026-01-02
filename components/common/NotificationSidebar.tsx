@@ -51,7 +51,6 @@ export default function NotificationSidebar() {
       // VALIDATION: Ensure requestId exists before opening modal
       // This prevents "Cast to ObjectId failed" error in backend
       if (!notification.requestId || notification.requestId === "undefined") {
-        console.error("❌ Cannot open review modal: requestId is missing or invalid", notification);
         return;
       }
       setSelectedNotification(notification);

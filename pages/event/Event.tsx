@@ -136,7 +136,6 @@ export default function EventSidebar({ selectedEventId, onProgramSelect }: Event
           refetch();
         },
         onError: (error) => {
-          console.error("Failed to reorder programs:", error);
           // Refetch to revert optimistic update
           refetch();
         },

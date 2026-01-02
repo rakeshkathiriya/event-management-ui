@@ -28,9 +28,15 @@ const ReviewRequestModalWrapper: React.FC<ReviewRequestModalWrapperProps> = ({
   requestId,
   onClose,
 }) => {
+  // All hooks must be called before any conditional returns
+  const { data: request, isLoading, error } = useGetUpdateRequestById(requestId);
+  const approveMutation = useApproveUpdateRequest();
+  const rejectMutation = useRejectUpdateRequest();
+  const { updateNotificationToReviewed } = useProgramUpdateNotifications();
+  const { user } = useAuth();
+
   // Validate requestId
   if (!requestId || requestId === "undefined" || requestId === "null") {
-    console.error("❌ Invalid requestId:", requestId);
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div className="bg-white px-8 py-6 rounded-lg shadow-2xl max-w-md">
@@ -46,12 +52,6 @@ const ReviewRequestModalWrapper: React.FC<ReviewRequestModalWrapperProps> = ({
       </div>
     );
   }
-
-  const { data: request, isLoading, error } = useGetUpdateRequestById(requestId);
-  const approveMutation = useApproveUpdateRequest();
-  const rejectMutation = useRejectUpdateRequest();
-  const { updateNotificationToReviewed } = useProgramUpdateNotifications();
-  const { user } = useAuth();
 
   // Show loading state
   if (isLoading) {
@@ -89,7 +89,7 @@ const ReviewRequestModalWrapper: React.FC<ReviewRequestModalWrapperProps> = ({
   const handleApprove = async (reqId: string, finalMergedContent: string) => {
     try {
       await approveMutation.mutateAsync({ requestId: reqId, finalMergedContent });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Error will be handled in onApproveSuccess/onApproveError callbacks
       throw error;
     }
@@ -102,7 +102,7 @@ const ReviewRequestModalWrapper: React.FC<ReviewRequestModalWrapperProps> = ({
         requestId: reqId,
         rejectionReason: reason,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Error will be handled in onRejectSuccess/onRejectError callbacks
       throw error;
     }
@@ -118,15 +118,17 @@ const ReviewRequestModalWrapper: React.FC<ReviewRequestModalWrapperProps> = ({
   };
 
   // Error callback for approval
-  const handleApproveError = (error: any) => {
-    console.error("Approval error:", error);
-    if (error.response?.status === 409) {
-      // Conflict: Already reviewed by another admin
-      toast.error("This request has already been reviewed by another admin");
-      onClose();
-    } else {
-      toast.error("Failed to approve request. Please try again.");
+  const handleApproveError = (error: unknown) => {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const err = error as { response?: { status?: number } };
+      if (err.response?.status === 409) {
+        // Conflict: Already reviewed by another admin
+        toast.error("This request has already been reviewed by another admin");
+        onClose();
+        return;
+      }
     }
+    toast.error("Failed to approve request. Please try again.");
   };
 
   // Success callback for rejection
@@ -140,8 +142,7 @@ const ReviewRequestModalWrapper: React.FC<ReviewRequestModalWrapperProps> = ({
   };
 
   // Error callback for rejection
-  const handleRejectError = (error: any) => {
-    console.error("Rejection error:", error);
+  const handleRejectError = () => {
     toast.error("Failed to reject request. Please try again.");
   };
 

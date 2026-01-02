@@ -36,3 +36,15 @@ export interface GetAllProgramsResponse {
     total: number;
   };
 }
+
+export interface CreateProgramResponse {
+  status: boolean;
+  message: string;
+  data: Program;
+}
+
+export interface UpdateProgramResponse {
+  status: boolean;
+  message: string;
+  data: Program;
+}

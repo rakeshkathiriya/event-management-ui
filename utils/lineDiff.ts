@@ -1,16 +1,20 @@
+import { diff_match_patch } from "diff-match-patch";
+
 /**
  * Line-level diff engine for HTML content with arrow-based merging
  */
 
-export type ChangeType = 'unchanged' | 'added' | 'removed' | 'modified';
+export type ChangeType = "unchanged" | "added" | "removed" | "modified";
 
 export interface LineChange {
   id: string;
   type: ChangeType;
   currentLine?: string; // HTML content from current version
   incomingLine?: string; // HTML content from incoming version
+  requestedLine?: string; // Alias for incomingLine for backward compatibility
   lineNumber: number;
   isMerged: boolean; // Has this line been merged via arrow click?
+  isAccepted?: boolean; // Has this change been accepted?
 }
 
 export interface DiffResult {
@@ -27,18 +31,20 @@ export interface DiffResult {
  * Parse HTML into line-level blocks (paragraphs, headings, lists, etc.)
  */
 function parseHtmlToLines(html: string): string[] {
-  if (!html || html.trim() === '') return [];
+  if (!html || html.trim() === "") return [];
 
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return [html.trim()];
   }
 
   const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
+  const doc = parser.parseFromString(html, "text/html");
   const lines: string[] = [];
 
   // Extract block-level elements
-  const blockElements = doc.body.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, div');
+  const blockElements = doc.body.querySelectorAll(
+    "p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, div"
+  );
 
   if (blockElements.length === 0) {
     const trimmed = html.trim();
@@ -59,14 +65,17 @@ function parseHtmlToLines(html: string): string[] {
  * Normalize line content for comparison
  */
 function normalizeLine(line: string): string {
-  if (typeof window === 'undefined') {
-    return line.replace(/<[^>]*>/g, '').trim().toLowerCase();
+  if (typeof window === "undefined") {
+    return line
+      .replace(/<[^>]*>/g, "")
+      .trim()
+      .toLowerCase();
   }
 
   const parser = new DOMParser();
-  const doc = parser.parseFromString(line, 'text/html');
-  const text = doc.body.textContent || '';
-  return text.trim().toLowerCase().replace(/\s+/g, ' ');
+  const doc = parser.parseFromString(line, "text/html");
+  const text = doc.body.textContent || "";
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 /**
@@ -109,15 +118,19 @@ function generateLineChanges(
 
   // Backtrack through LCS
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && normalizeLine(currentLines[i - 1]) === normalizeLine(incomingLines[j - 1])) {
-      operations.unshift({ type: 'unchanged', currentIdx: i - 1, incomingIdx: j - 1 });
+    if (
+      i > 0 &&
+      j > 0 &&
+      normalizeLine(currentLines[i - 1]) === normalizeLine(incomingLines[j - 1])
+    ) {
+      operations.unshift({ type: "unchanged", currentIdx: i - 1, incomingIdx: j - 1 });
       i--;
       j--;
     } else if (j > 0 && (i === 0 || lcs[i][j - 1] >= lcs[i - 1][j])) {
-      operations.unshift({ type: 'added', incomingIdx: j - 1 });
+      operations.unshift({ type: "added", incomingIdx: j - 1 });
       j--;
     } else if (i > 0) {
-      operations.unshift({ type: 'removed', currentIdx: i - 1 });
+      operations.unshift({ type: "removed", currentIdx: i - 1 });
       i--;
     }
   }
@@ -145,11 +158,15 @@ function generateLineChanges(
 /**
  * Calculate diff statistics
  */
-function calculateStats(changes: LineChange[]): { additions: number; deletions: number; modifications: number } {
+function calculateStats(changes: LineChange[]): {
+  additions: number;
+  deletions: number;
+  modifications: number;
+} {
   return {
-    additions: changes.filter((c) => c.type === 'added').length,
-    deletions: changes.filter((c) => c.type === 'removed').length,
-    modifications: changes.filter((c) => c.type === 'modified').length,
+    additions: changes.filter((c) => c.type === "added").length,
+    deletions: changes.filter((c) => c.type === "removed").length,
+    modifications: changes.filter((c) => c.type === "modified").length,
   };
 }
 
@@ -174,7 +191,7 @@ export function parseLineLevelDiff(currentHtml: string, incomingHtml: string): D
 
   return {
     changes,
-    hasChanges: changes.some((c) => c.type !== 'unchanged'),
+    hasChanges: changes.some((c) => c.type !== "unchanged"),
     stats,
   };
 }
@@ -188,29 +205,45 @@ export function generateFinalMergedContent(changes: LineChange[]): string {
   const result: string[] = [];
 
   for (const change of changes) {
-    if (change.type === 'unchanged') {
+    if (change.type === "unchanged") {
       // Always include unchanged lines from current
-      result.push(change.currentLine || change.incomingLine || '');
-    } else if (change.type === 'removed') {
+      result.push(change.currentLine || change.incomingLine || "");
+    } else if (change.type === "removed") {
       // Keep removed lines from current UNLESS they've been merged (which means "accept removal")
       if (!change.isMerged) {
-        result.push(change.currentLine || '');
+        result.push(change.currentLine || "");
       }
       // If isMerged, skip (accept the removal)
-    } else if (change.type === 'added') {
+    } else if (change.type === "added") {
       // Only include added lines if they've been merged
       if (change.isMerged) {
-        result.push(change.incomingLine || '');
+        result.push(change.incomingLine || "");
       }
-    } else if (change.type === 'modified') {
+    } else if (change.type === "modified") {
       // Use incoming if merged, otherwise keep current
       if (change.isMerged) {
-        result.push(change.incomingLine || '');
+        result.push(change.incomingLine || "");
       } else {
-        result.push(change.currentLine || '');
+        result.push(change.currentLine || "");
       }
     }
   }
 
-  return result.join('');
+  return result.join("");
 }
+
+const dmp = new diff_match_patch();
+
+/**
+ * Detects even small text changes (word, punctuation, sentence)
+ * Returns true if ANY word / character / punctuation differs
+ */
+export const hasTextLevelChange = (oldText: string, newText: string): boolean => {
+  if (oldText === newText) return false;
+
+  const diffs = dmp.diff_main(oldText, newText);
+  dmp.diff_cleanupSemantic(diffs);
+
+  // Any insert or delete = real change
+  return diffs.some(([op]) => op !== 0);
+};
