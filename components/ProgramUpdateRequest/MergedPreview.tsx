@@ -26,7 +26,7 @@ const MergedPreview: React.FC<MergedPreviewProps> = ({ mergedContent, onContentC
               Final Merged Preview (Editable)
             </h4>
             <p className="text-xs text-blue-700 leading-relaxed">
-              This is the final content that will be saved when you approve. It's generated
+              This is the final content that will be saved when you approve. It is generated
               automatically based on your accepted/rejected changes, but you can manually edit it
               below before approving.
             </p>

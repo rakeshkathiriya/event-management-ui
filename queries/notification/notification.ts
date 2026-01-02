@@ -28,7 +28,6 @@ export const useDismissNotification = () => {
       // queryClient.invalidateQueries({ queryKey: ['activeNotifications'] });
     },
     onError: (error) => {
-      console.error('Failed to dismiss notification:', error);
     },
   });
 };
@@ -60,7 +59,6 @@ export const useMarkNotificationAsRead = () => {
       // queryClient.invalidateQueries({ queryKey: ['activeNotifications'] });
     },
     onError: (error) => {
-      console.error('Failed to mark notification as read:', error);
     },
   });
 };
@@ -89,7 +87,6 @@ export const useDismissAllNotifications = () => {
       // queryClient.invalidateQueries({ queryKey: ['activeNotifications'] });
     },
     onError: (error) => {
-      console.error('Failed to dismiss all notifications:', error);
     },
   });
 };
@@ -111,7 +108,6 @@ export const useGetActiveNotifications = () => {
       queryClient.invalidateQueries({ queryKey: ['activeNotifications'] });
     },
     onError: (error) => {
-      console.error('Failed to fetch active notifications:', error);
     },
   });
 };

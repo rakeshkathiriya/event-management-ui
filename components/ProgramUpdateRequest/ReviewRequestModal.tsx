@@ -91,23 +91,19 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
   const changes = useMemo((): Change[] => {
     // Ensure data exists before computing diff
     if (!request._id) {
-      console.warn("[DiffCompute] Request not ready yet (no _id)");
       return [];
     }
 
     if (!request.requestedDescription) {
-      console.warn("[DiffCompute] No requested description in request");
       return [];
     }
 
-    console.log("[DiffCompute] Computing for request:", request._id);
 
     const detectedChanges = computeDiff(
       request.currentDescriptionSnapshot || "",
       request.requestedDescription || ""
     );
 
-    console.log(`[DiffCompute] Result: ${detectedChanges.length} changes detected`);
     return detectedChanges;
   }, [request._id, request.currentDescriptionSnapshot, request.requestedDescription]);
 
@@ -168,7 +164,6 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
     // Defensive check to ensure request._id exists before calling API
     // This prevents "Cast to ObjectId failed for value 'undefined'" error
     if (!isValidRequest) {
-      console.error("❌ Cannot approve: request._id is missing", request);
       setError("Invalid request ID. Cannot approve.");
       return;
     }
@@ -196,7 +191,6 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
   const handleReject = async () => {
     // Defensive check to ensure request._id exists before calling API
     if (!isValidRequest) {
-      console.error("❌ Cannot reject: request._id is missing", request);
       setError("Invalid request ID. Cannot reject.");
       return;
     }
@@ -225,26 +219,16 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
   // CRITICAL - Do NOT render conflict UI until data is ready
   // This ensures diff logic runs AFTER data is loaded, not before
   if (!request || !request._id) {
-    console.error("[Modal] Request data not ready - no _id");
     return null;
   }
 
   if (!request.requestedDescription || !request.requestedDescription.trim()) {
-    console.error("[Modal] No requested description in request");
     return null;
   }
 
   if (!request.currentDescriptionSnapshot) {
-    console.warn("[Modal] No current description snapshot (might be first version)");
     // This is OK - we can proceed with empty current description
   }
-
-  console.log("[Modal] ✅ Rendering with data ready:", {
-    requestId: request._id,
-    currentLength: request.currentDescriptionSnapshot?.length || 0,
-    requestedLength: request.requestedDescription?.length || 0,
-    totalChanges: changes.length,
-  });
 
   return (
     <motion.div
@@ -467,7 +451,6 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                               {!isAccepted ? (
                                 <button
                                   onClick={() => {
-                                    console.log(`🎯 Accepting ${change.type} change:`, change.id);
                                     handleAcceptChange(change.id);
                                   }}
                                   className={`group relative p-3 rounded-full text-white transition-all hover:scale-110 active:scale-95 shadow-xl border-2 border-white ${
@@ -494,7 +477,6 @@ const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
                               ) : (
                                 <button
                                   onClick={() => {
-                                    console.log("🗑️ Discarding change:", change.id);
                                     handleDiscardChange(change.id);
                                   }}
                                   className="p-2.5 rounded-full bg-gray-500 hover:bg-gray-600 text-white transition-all hover:scale-110 active:scale-95 shadow-xl border-2 border-white"

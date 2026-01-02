@@ -7,7 +7,7 @@ import { toast } from "react-toastify";
 
 import { useGetPrograms, useDeleteProgram } from "@/queries/program/program";
 import { useAuth } from "@/hooks/useAuth";
-import { Program } from "@/utils/types/program";
+import { Program, Department } from "@/utils/types/program";
 import DescriptionModal from "@/components/common/DescriptionModal";
 import DeleteProgramModal from "@/components/common/DeleteProgramModal";
 import ProgramForm from "./ProgramForm";
@@ -92,7 +92,7 @@ const AdminProgramList = () => {
               <span className="text-sm font-medium">Departments Assigned</span>
             </div>
             <p className="mt-1 text-2xl font-bold text-bgPrimaryDark">
-              {programs.reduce((sum, p) => sum + (p.departments?.length ?? 0), 0)}
+              {programs.reduce((sum: number, p: Program) => sum + (p.departments?.length ?? 0), 0)}
             </p>
           </div>
         </div>
@@ -120,7 +120,7 @@ const AdminProgramList = () => {
       )}
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {programs.map((program) => (
+        {programs.map((program: Program) => (
           <div
             key={program._id}
             className="group relative rounded-3xl border border-bgPrimary/20 bg-white/80 p-6 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
@@ -155,7 +155,7 @@ const AdminProgramList = () => {
               <div
                 className="mb-4 line-clamp-3 text-sm text-gray-500 prose prose-sm max-w-none"
                 dangerouslySetInnerHTML={{
-                  __html: program.description.replace(/<[^>]*>/g, (match) =>
+                  __html: program.description.replace(/<[^>]*>/g, (match: string) =>
                     match.startsWith("</") ? " " : ""
                   ),
                 }}
@@ -168,7 +168,7 @@ const AdminProgramList = () => {
                   Assigned Departments
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {program.departments.slice(0, 3).map((dept) => (
+                  {program.departments.slice(0, 3).map((dept: Department) => (
                     <span
                       key={dept._id}
                       className="rounded-full bg-bgPrimary/20 px-3 py-1 text-xs font-medium text-bgPrimaryDark"
@@ -228,7 +228,7 @@ const AdminProgramList = () => {
         <DescriptionModal
           title={selectedProgram.title}
           description={selectedProgram.description}
-          departments={selectedProgram.departments}
+          departments={selectedProgram.departments as any}
           programId={selectedProgram._id}
           onClose={() => setSelectedProgram(null)}
           onRoleUpdate={refetch}

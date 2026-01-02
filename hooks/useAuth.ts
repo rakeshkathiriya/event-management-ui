@@ -12,36 +12,49 @@ interface User {
   name: string;
 }
 
+interface AuthState {
+  isLoading: boolean;
+  userRole: UserRole;
+  user: User | null;
+}
+
 export const useAuth = () => {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [userRole, setUserRole] = useState<UserRole>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [authState, setAuthState] = useState<AuthState>({
+    isLoading: true,
+    userRole: null,
+    user: null,
+  });
 
   useEffect(() => {
     const token = getToken();
-    const role = getUserRole();
-    const userData = getUserFromToken();
 
     if (!token) {
       router.replace("/auth/login");
       return;
     }
 
-    setUserRole(role as UserRole);
-    setUser(userData);
-    setIsLoading(false);
+    const role = getUserRole();
+    const userData = getUserFromToken();
+
+    // Batch state updates to avoid cascading renders
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAuthState({
+      userRole: role as UserRole,
+      user: userData,
+      isLoading: false,
+    });
   }, [router]);
 
-  const isAdmin = userRole === "Admin";
-  const isUser = userRole === "User";
+  const isAdmin = authState.userRole === "Admin";
+  const isUser = authState.userRole === "User";
 
   return {
-    isLoading,
-    userRole,
+    isLoading: authState.isLoading,
+    userRole: authState.userRole,
     isAdmin,
     isUser,
-    isAuthenticated: !!userRole,
-    user,
+    isAuthenticated: !!authState.userRole,
+    user: authState.user,
   };
 };

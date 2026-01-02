@@ -208,6 +208,11 @@ const DescriptionModal: React.FC<DescriptionModalProps> = ({
           currentUserId={user?._id || ""}
           isAdmin={isAdmin}
           onRoleUpdate={handleRoleUpdate}
+          refetchRoles={async () => {
+            if (onRoleUpdate) {
+              await onRoleUpdate();
+            }
+          }}
         />
       )}
     </Modal>
