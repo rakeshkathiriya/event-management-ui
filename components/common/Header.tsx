@@ -68,6 +68,9 @@ const Header = () => {
               <Link href="/main/event" className="text-white text-md hover:opacity-80">
                 Event
               </Link>
+              <Link href="/main/checklist" className="text-white text-md hover:opacity-80">
+                Checklist
+              </Link>
               <Link href="/main/programs" className="text-white text-md hover:opacity-80">
                 Programs
               </Link>
