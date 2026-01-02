@@ -10,16 +10,18 @@ import {
 } from "@/queries/task/task";
 import { Task, TaskColumn, TaskFilters, TaskPriority } from "@/utils/types/task";
 import {
-  closestCorners,
   DndContext,
   DragEndEvent,
   DragOverEvent,
   DragOverlay,
   DragStartEvent,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
+  pointerWithin,
+  rectIntersection,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -29,38 +31,82 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useDroppable } from "@dnd-kit/core";
 import {
   Calendar,
-  CheckCircle2,
   ChevronDown,
+  Clock,
   Filter,
   GripVertical,
+  LayoutGrid,
+  Loader2,
   MoreHorizontal,
   Plus,
   Search,
+  Sparkles,
   User,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import TaskFormModal from "./TaskFormModal";
 import TaskFiltersPanel from "./TaskFiltersPanel";
 
-// Priority colors
-const priorityColors: Record<TaskPriority, string> = {
-  low: "bg-gray-100 text-gray-600",
-  medium: "bg-blue-100 text-blue-600",
-  high: "bg-orange-100 text-orange-600",
-  urgent: "bg-red-100 text-red-600",
+// Priority configuration with theme colors
+const priorityConfig: Record<TaskPriority, { bg: string; text: string; dot: string; label: string }> = {
+  low: {
+    bg: "bg-slate-50",
+    text: "text-slate-600",
+    dot: "bg-slate-400",
+    label: "Low"
+  },
+  medium: {
+    bg: "bg-bgPrimary/10",
+    text: "text-bgPrimary",
+    dot: "bg-bgPrimary",
+    label: "Medium"
+  },
+  high: {
+    bg: "bg-orange/10",
+    text: "text-orange",
+    dot: "bg-orange",
+    label: "High"
+  },
+  urgent: {
+    bg: "bg-red-50",
+    text: "text-red-600",
+    dot: "bg-red-500",
+    label: "Urgent"
+  },
 };
 
-const priorityLabels: Record<TaskPriority, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  urgent: "Urgent",
+// Get initials from name
+const getInitials = (name: string) => {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 };
 
-// Sortable Task Card
+// Format due date
+const formatDueDate = (date: string) => {
+  const d = new Date(date);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (d.toDateString() === today.toDateString()) return "Today";
+  if (d.toDateString() === tomorrow.toDateString()) return "Tomorrow";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
+// Check if due date is overdue
+const isOverdue = (date: string) => {
+  return new Date(date) < new Date();
+};
+
+// Sortable Task Card - Modern Design
 interface SortableTaskCardProps {
   task: Task;
   onClick: () => void;
@@ -76,144 +122,204 @@ function SortableTaskCard({ task, onClick }: SortableTaskCardProps) {
     isDragging,
   } = useSortable({
     id: task._id,
-    data: { type: "task", task },
+    data: { type: "task", task, statusId: task.status._id },
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
   };
+
+  const priority = priorityConfig[task.priority];
+  const dueDateOverdue = task.dueDate && isOverdue(task.dueDate);
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="group bg-white rounded-lg border border-gray-200 p-3 hover:shadow-md transition-all cursor-pointer"
+      className={`group relative bg-white rounded-xl border border-borderLight p-4
+        hover:border-bgPrimary/30 hover:shadow-[0_4px_20px_rgba(45,111,109,0.08)]
+        transition-all duration-200 cursor-pointer
+        ${isDragging ? "shadow-xl ring-2 ring-bgPrimary/50 scale-[1.02]" : ""}`}
       onClick={onClick}
     >
-      <div className="flex items-start gap-2">
-        <div
-          {...attributes}
-          {...listeners}
-          className="mt-1 cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <GripVertical className="w-3 h-3 text-gray-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-medium text-gray-900 truncate">
-            {task.title}
-          </h4>
-          {task.description && (
-            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-              {task.description.replace(/<[^>]*>/g, "").substring(0, 80)}
-            </p>
-          )}
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full ${
-                priorityColors[task.priority]
-              }`}
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute left-1 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing
+          p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-bgSoft transition-all"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="w-4 h-4 text-textMuted" />
+      </div>
+
+      <div className="pl-5">
+        {/* Title */}
+        <h4 className="text-sm font-semibold text-grayDark leading-snug pr-6">
+          {task.title}
+        </h4>
+
+        {/* Description */}
+        {task.description && (
+          <p className="text-xs text-textMuted mt-1.5 line-clamp-2 leading-relaxed">
+            {task.description.replace(/<[^>]*>/g, "").substring(0, 100)}
+          </p>
+        )}
+
+        {/* Meta Row */}
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
+          {/* Priority Badge */}
+          <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md ${priority.bg} ${priority.text}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${priority.dot}`} />
+            {priority.label}
+          </span>
+
+          {/* Due Date */}
+          {task.dueDate && (
+            <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md
+              ${dueDateOverdue
+                ? "bg-red-50 text-red-600"
+                : "bg-bgSoft text-textMuted"}`}
             >
-              {priorityLabels[task.priority]}
+              <Clock className="w-3 h-3" />
+              {formatDueDate(task.dueDate)}
             </span>
-            {task.assignee && (
-              <span className="text-xs text-gray-500 flex items-center gap-1">
-                <User className="w-3 h-3" />
-                {task.assignee.name}
-              </span>
-            )}
-            {task.dueDate && (
-              <span className="text-xs text-gray-500 flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                {new Date(task.dueDate).toLocaleDateString()}
-              </span>
-            )}
-          </div>
+          )}
         </div>
+
+        {/* Assignee */}
+        {task.assignee && (
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-borderLight/50">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-bgPrimary to-bgPrimaryDark
+              flex items-center justify-center text-white text-[10px] font-semibold shadow-sm">
+              {getInitials(task.assignee.name)}
+            </div>
+            <span className="text-xs text-textSecondary font-medium">
+              {task.assignee.name}
+            </span>
+          </div>
+        )}
       </div>
+
+      {/* Hover Action */}
+      <button
+        className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100
+          hover:bg-bgSoft transition-all"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+      >
+        <MoreHorizontal className="w-4 h-4 text-textMuted" />
+      </button>
     </div>
   );
 }
 
-// Task Card Overlay (shown during drag)
+// Task Card Overlay - Drag Preview
 function TaskCardOverlay({ task }: { task: Task }) {
+  const priority = priorityConfig[task.priority];
+
   return (
-    <div className="bg-white rounded-lg border-2 border-bgPrimary p-3 shadow-xl">
-      <h4 className="text-sm font-medium text-gray-900">{task.title}</h4>
+    <div className="bg-white rounded-xl border-2 border-bgPrimary p-4 shadow-2xl w-[300px] rotate-2">
+      <h4 className="text-sm font-semibold text-grayDark">{task.title}</h4>
       <div className="flex items-center gap-2 mt-2">
-        <span
-          className={`text-xs px-2 py-0.5 rounded-full ${
-            priorityColors[task.priority]
-          }`}
-        >
-          {priorityLabels[task.priority]}
+        <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md ${priority.bg} ${priority.text}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${priority.dot}`} />
+          {priority.label}
         </span>
+        {task.assignee && (
+          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-bgPrimary to-bgPrimaryDark
+            flex items-center justify-center text-white text-[9px] font-semibold">
+            {getInitials(task.assignee.name)}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// Column Component
-interface TaskColumnComponentProps {
+// Droppable Column Component - Modern Design
+interface DroppableColumnProps {
   column: TaskColumn;
+  tasks: Task[];
   onTaskClick: (task: Task) => void;
   onAddTask: (statusId: string) => void;
-  filteredTasks: Task[];
+  isOver: boolean;
 }
 
-function TaskColumnComponent({
+function DroppableColumn({
   column,
+  tasks,
   onTaskClick,
   onAddTask,
-  filteredTasks,
-}: TaskColumnComponentProps) {
+  isOver,
+}: DroppableColumnProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const { setNodeRef } = useDroppable({
+    id: `column-${column.status._id}`,
+    data: { type: "column", statusId: column.status._id },
+  });
+
   return (
-    <div className="flex flex-col bg-gray-50 rounded-xl min-w-[300px] max-w-[300px] h-fit max-h-[calc(100vh-220px)]">
+    <div
+      className={`flex flex-col rounded-2xl min-w-[320px] max-w-[320px]
+        transition-all duration-300 h-fit max-h-[calc(100vh-200px)]
+        ${isOver
+          ? "bg-bgPrimary/5 ring-2 ring-bgPrimary/30 ring-offset-2"
+          : "bg-gradient-to-b from-bgSoft/80 to-bgSoft/40"}`}
+    >
       {/* Column Header */}
-      <div
-        className="flex items-center justify-between p-3 cursor-pointer"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-      >
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: column.status.color }}
-          />
-          <h3 className="font-medium text-gray-800">{column.status.name}</h3>
-          <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
-            {filteredTasks.length}
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddTask(column.status._id);
-            }}
-            className="p-1 hover:bg-gray-200 rounded transition-colors"
-          >
-            <Plus className="w-4 h-4 text-gray-500" />
-          </button>
-          <ChevronDown
-            className={`w-4 h-4 text-gray-500 transition-transform ${
-              isCollapsed ? "-rotate-90" : ""
-            }`}
-          />
+      <div className="sticky top-0 z-10 backdrop-blur-sm bg-white/80 rounded-t-2xl">
+        <div
+          className="flex items-center justify-between p-4 cursor-pointer"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-3 h-3 rounded-full ring-4 ring-white shadow-sm"
+              style={{ backgroundColor: column.status.color }}
+            />
+            <h3 className="font-semibold text-grayDark">{column.status.name}</h3>
+            <span className="text-xs font-medium text-textMuted bg-white px-2.5 py-1 rounded-full shadow-sm border border-borderLight/50">
+              {tasks.length}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddTask(column.status._id);
+              }}
+              className="p-2 rounded-xl hover:bg-bgPrimary/10 text-textMuted hover:text-bgPrimary transition-all"
+              title="Add task"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            <ChevronDown
+              className={`w-4 h-4 text-textMuted transition-transform duration-200 ${
+                isCollapsed ? "-rotate-90" : ""
+              }`}
+            />
+          </div>
         </div>
       </div>
 
       {/* Column Content */}
       {!isCollapsed && (
-        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        <div
+          ref={setNodeRef}
+          className={`flex-1 overflow-y-auto p-3 space-y-3 min-h-[120px] transition-colors duration-200
+            ${isOver ? "bg-bgPrimary/5" : ""}`}
+        >
           <SortableContext
-            items={filteredTasks.map((t) => t._id)}
+            items={tasks.map((t) => t._id)}
             strategy={verticalListSortingStrategy}
           >
-            {filteredTasks.map((task) => (
+            {tasks.map((task) => (
               <SortableTaskCard
                 key={task._id}
                 task={task}
@@ -221,13 +327,77 @@ function TaskColumnComponent({
               />
             ))}
           </SortableContext>
-          {filteredTasks.length === 0 && (
-            <div className="text-center py-8 text-gray-400 text-sm">
-              No tasks
+
+          {/* Empty State */}
+          {tasks.length === 0 && (
+            <div
+              className={`flex flex-col items-center justify-center py-10 rounded-xl border-2 border-dashed transition-all
+                ${isOver
+                  ? "border-bgPrimary bg-bgPrimary/10 text-bgPrimary"
+                  : "border-borderLight text-textMuted"}`}
+            >
+              {isOver ? (
+                <>
+                  <div className="w-10 h-10 rounded-full bg-bgPrimary/20 flex items-center justify-center mb-2">
+                    <Plus className="w-5 h-5 text-bgPrimary" />
+                  </div>
+                  <span className="text-sm font-medium">Drop here</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-10 h-10 rounded-full bg-bgSoft flex items-center justify-center mb-2">
+                    <LayoutGrid className="w-5 h-5 text-textMuted" />
+                  </div>
+                  <span className="text-sm">No tasks yet</span>
+                  <button
+                    onClick={() => onAddTask(column.status._id)}
+                    className="mt-2 text-xs text-bgPrimary hover:underline font-medium"
+                  >
+                    + Add a task
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Loading Skeleton
+function LoadingSkeleton() {
+  return (
+    <div className="h-full flex flex-col bg-gradient-to-br from-bgSoft/50 to-white">
+      {/* Header Skeleton */}
+      <div className="p-6 border-b border-borderLight bg-white/80 backdrop-blur-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-8 w-32 bg-bgSoft rounded-lg animate-pulse" />
+            <div className="h-10 w-64 bg-bgSoft rounded-xl animate-pulse" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-24 bg-bgSoft rounded-xl animate-pulse" />
+            <div className="h-10 w-28 bg-bgSoft rounded-xl animate-pulse" />
+          </div>
+        </div>
+      </div>
+
+      {/* Board Skeleton */}
+      <div className="flex-1 p-6">
+        <div className="flex gap-5">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="w-[320px] space-y-4">
+              <div className="h-14 bg-bgSoft rounded-2xl animate-pulse" />
+              <div className="space-y-3">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="h-28 bg-white rounded-xl animate-pulse border border-borderLight" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -244,133 +414,184 @@ export default function TaskBoard() {
   useTaskSync();
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [formStatusId, setFormStatusId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<TaskFilters>({});
   const [localColumns, setLocalColumns] = useState<TaskColumn[]>([]);
+  const [overColumnId, setOverColumnId] = useState<string | null>(null);
 
-  // Sync local columns with server data
+  const dragStartColumnRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (columns) {
       setLocalColumns(columns);
     }
   }, [columns]);
 
-  // Seed default statuses if none exist
   useEffect(() => {
     if (columns && columns.length === 0) {
       seedMutation.mutate();
     }
   }, [columns]);
 
-  // Configure drag sensors
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
-  // Filter tasks based on active filters
-  const getFilteredTasks = (tasks: Task[]) => {
-    return tasks.filter((task) => {
-      if (filters.assigneeId && task.assignee?._id !== filters.assigneeId) {
-        return false;
-      }
-      if (filters.departmentId && task.department?._id !== filters.departmentId) {
-        return false;
-      }
-      if (filters.priority && task.priority !== filters.priority) {
-        return false;
-      }
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        return (
-          task.title.toLowerCase().includes(searchLower) ||
-          task.description?.toLowerCase().includes(searchLower)
-        );
-      }
-      return true;
-    });
-  };
+  const getFilteredTasks = useCallback(
+    (tasks: Task[]) => {
+      return tasks.filter((task) => {
+        if (filters.assigneeId && task.assignee?._id !== filters.assigneeId) return false;
+        if (filters.departmentId && task.department?._id !== filters.departmentId) return false;
+        if (filters.priority && task.priority !== filters.priority) return false;
+        if (filters.search) {
+          const searchLower = filters.search.toLowerCase();
+          return (
+            task.title.toLowerCase().includes(searchLower) ||
+            task.description?.toLowerCase().includes(searchLower)
+          );
+        }
+        return true;
+      });
+    },
+    [filters]
+  );
 
-  // Find task and column by task ID
-  const findTaskAndColumn = (taskId: string) => {
-    for (const column of localColumns) {
-      const task = column.tasks.find((t) => t._id === taskId);
-      if (task) {
-        return { task, column };
+  const findColumnByTaskId = useCallback(
+    (taskId: string): TaskColumn | null => {
+      for (const column of localColumns) {
+        if (column.tasks.some((t) => t._id === taskId)) {
+          return column;
+        }
       }
-    }
-    return null;
-  };
+      return null;
+    },
+    [localColumns]
+  );
+
+  const getColumnByStatusId = useCallback(
+    (statusId: string): TaskColumn | null => {
+      return localColumns.find((col) => col.status._id === statusId) || null;
+    },
+    [localColumns]
+  );
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
-    const result = findTaskAndColumn(active.id as string);
-    if (result) {
-      setActiveTask(result.task);
+    const taskId = active.id as string;
+    const column = findColumnByTaskId(taskId);
+
+    if (column) {
+      const task = column.tasks.find((t) => t._id === taskId);
+      if (task) {
+        setActiveTask(task);
+        setActiveColumnId(column.status._id);
+        dragStartColumnRef.current = column.status._id;
+      }
     }
   };
 
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
-    if (!over) return;
+    if (!over || !activeTask) return;
 
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    const activeResult = findTaskAndColumn(activeId);
-    if (!activeResult) return;
+    let targetColumnId: string | null = null;
 
-    // Check if we're over a column or a task
-    const overColumn = localColumns.find((col) => col.status._id === overId);
-    const overResult = findTaskAndColumn(overId);
-
-    const targetColumn = overColumn || overResult?.column;
-    if (!targetColumn || targetColumn.status._id === activeResult.column.status._id) {
-      return;
+    if (overId.startsWith("column-")) {
+      targetColumnId = overId.replace("column-", "");
+    } else {
+      const overColumn = findColumnByTaskId(overId);
+      if (overColumn) {
+        targetColumnId = overColumn.status._id;
+      }
     }
 
-    // Move task to new column optimistically
-    setLocalColumns((prev) => {
-      const newColumns = prev.map((col) => ({
-        ...col,
-        tasks: [...col.tasks],
-      }));
+    if (!targetColumnId) return;
 
-      const sourceColIndex = newColumns.findIndex(
-        (col) => col.status._id === activeResult.column.status._id
-      );
-      const destColIndex = newColumns.findIndex(
-        (col) => col.status._id === targetColumn.status._id
-      );
+    setOverColumnId(targetColumnId);
 
-      const [movedTask] = newColumns[sourceColIndex].tasks.splice(
-        newColumns[sourceColIndex].tasks.findIndex((t) => t._id === activeId),
-        1
-      );
+    const currentColumn = findColumnByTaskId(activeId);
+    if (!currentColumn) return;
 
-      if (overResult) {
-        const overIndex = newColumns[destColIndex].tasks.findIndex(
-          (t) => t._id === overId
+    const sourceColumnId = currentColumn.status._id;
+
+    if (sourceColumnId !== targetColumnId) {
+      setLocalColumns((prev) => {
+        const newColumns = prev.map((col) => ({
+          ...col,
+          tasks: col.tasks.filter((t) => t._id !== activeId),
+        }));
+
+        const destColIndex = newColumns.findIndex(
+          (col) => col.status._id === targetColumnId
         );
-        newColumns[destColIndex].tasks.splice(overIndex, 0, movedTask);
-      } else {
-        newColumns[destColIndex].tasks.push(movedTask);
-      }
 
-      return newColumns;
-    });
+        if (destColIndex === -1) return prev;
+
+        const updatedTask = {
+          ...activeTask,
+          status: newColumns[destColIndex].status,
+        };
+
+        if (overId.startsWith("column-")) {
+          newColumns[destColIndex].tasks.push(updatedTask);
+        } else {
+          const overIndex = newColumns[destColIndex].tasks.findIndex(
+            (t) => t._id === overId
+          );
+          if (overIndex >= 0) {
+            newColumns[destColIndex].tasks.splice(overIndex, 0, updatedTask);
+          } else {
+            newColumns[destColIndex].tasks.push(updatedTask);
+          }
+        }
+
+        return newColumns;
+      });
+    } else {
+      if (!overId.startsWith("column-") && activeId !== overId) {
+        setLocalColumns((prev) => {
+          const columnIndex = prev.findIndex(
+            (col) => col.status._id === sourceColumnId
+          );
+          if (columnIndex === -1) return prev;
+
+          const column = prev[columnIndex];
+          const oldIndex = column.tasks.findIndex((t) => t._id === activeId);
+          const newIndex = column.tasks.findIndex((t) => t._id === overId);
+
+          if (oldIndex === -1 || newIndex === -1) return prev;
+
+          const newTasks = arrayMove(column.tasks, oldIndex, newIndex);
+
+          const newColumns = [...prev];
+          newColumns[columnIndex] = { ...column, tasks: newTasks };
+          return newColumns;
+        });
+      }
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+
     setActiveTask(null);
+    setActiveColumnId(null);
+    setOverColumnId(null);
 
     if (!over) {
       refetch();
@@ -379,68 +600,70 @@ export default function TaskBoard() {
 
     const activeId = active.id as string;
     const overId = over.id as string;
+    const originalColumnId = dragStartColumnRef.current;
+    dragStartColumnRef.current = null;
 
-    if (activeId === overId) return;
-
-    const activeResult = findTaskAndColumn(activeId);
-    if (!activeResult) {
+    if (!originalColumnId) {
       refetch();
       return;
     }
 
-    // Check if dropped on a column or task
-    const overColumn = localColumns.find((col) => col.status._id === overId);
-    const overResult = findTaskAndColumn(overId);
-    const targetColumn = overColumn || overResult?.column;
+    let targetColumnId: string | null = null;
 
+    if (overId.startsWith("column-")) {
+      targetColumnId = overId.replace("column-", "");
+    } else {
+      const overColumn = findColumnByTaskId(overId);
+      if (overColumn) {
+        targetColumnId = overColumn.status._id;
+      }
+    }
+
+    if (!targetColumnId) {
+      refetch();
+      return;
+    }
+
+    const targetColumn = getColumnByStatusId(targetColumnId);
     if (!targetColumn) {
       refetch();
       return;
     }
 
-    const sourceStatusId = activeResult.column.status._id;
-    const targetStatusId = targetColumn.status._id;
+    const taskIndex = targetColumn.tasks.findIndex((t) => t._id === activeId);
+    const newOrder = taskIndex >= 0 ? taskIndex : targetColumn.tasks.length;
 
-    if (sourceStatusId === targetStatusId) {
-      // Reorder within same column
-      const column = localColumns.find((c) => c.status._id === sourceStatusId);
-      if (column) {
-        const oldIndex = column.tasks.findIndex((t) => t._id === activeId);
-        const newIndex = column.tasks.findIndex((t) => t._id === overId);
-
-        if (oldIndex !== newIndex) {
-          const reorderedTasks = arrayMove(column.tasks, oldIndex, newIndex);
-          setLocalColumns((prev) =>
-            prev.map((col) =>
-              col.status._id === sourceStatusId
-                ? { ...col, tasks: reorderedTasks }
-                : col
-            )
-          );
-
-          reorderMutation.mutate({
-            statusId: sourceStatusId,
-            taskIds: reorderedTasks.map((t) => t._id),
-          });
-        }
-      }
-    } else {
-      // Move to different column
-      const targetIndex = overResult
-        ? targetColumn.tasks.findIndex((t) => t._id === overId)
-        : targetColumn.tasks.length;
-
+    if (originalColumnId !== targetColumnId) {
       moveTaskMutation.mutate(
         {
           id: activeId,
-          targetStatusId,
-          newOrder: targetIndex,
+          targetStatusId: targetColumnId,
+          newOrder,
+        },
+        {
+          onError: () => refetch(),
+        }
+      );
+    } else {
+      const taskIds = targetColumn.tasks.map((t) => t._id);
+      reorderMutation.mutate(
+        {
+          statusId: targetColumnId,
+          taskIds,
         },
         {
           onError: () => refetch(),
         }
       );
     }
+  };
+
+  const handleDragCancel = () => {
+    setActiveTask(null);
+    setActiveColumnId(null);
+    setOverColumnId(null);
+    dragStartColumnRef.current = null;
+    refetch();
   };
 
   const handleAddTask = (statusId: string) => {
@@ -463,91 +686,136 @@ export default function TaskBoard() {
 
   const activeFiltersCount = Object.values(filters).filter(Boolean).length;
 
+  const collisionDetection = useCallback((args: any) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) {
+      return pointerCollisions;
+    }
+    return rectIntersection(args);
+  }, []);
+
+  // Total tasks count
+  const totalTasks = localColumns.reduce((acc, col) => acc + col.tasks.length, 0);
+
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading tasks...</div>
-      </div>
-    );
+    return <LoadingSkeleton />;
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-white">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-semibold text-gray-800">Task Board</h1>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              value={filters.search || ""}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, search: e.target.value }))
-              }
-              className="pl-9 pr-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-bgPrimary/50 w-64"
-            />
+    <div className="h-full flex flex-col bg-gradient-to-br from-bgSoft/30 via-white to-bgPrimary/5">
+      {/* Modern Header */}
+      <div className="sticky top-0 z-20 backdrop-blur-xl bg-white/90 border-b border-borderLight/50">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Left Section */}
+            <div className="flex items-center gap-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-bgPrimary to-bgPrimaryDark
+                  flex items-center justify-center shadow-lg shadow-bgPrimary/20">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-grayDark">Task Board</h1>
+                  <p className="text-xs text-textMuted">{totalTasks} tasks across {localColumns.length} columns</p>
+                </div>
+              </div>
+
+              {/* Search */}
+              <div className="relative ml-4">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-textMuted" />
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={filters.search || ""}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, search: e.target.value }))
+                  }
+                  className="pl-10 pr-4 py-2.5 text-sm bg-bgSoft/50 border border-borderLight rounded-xl
+                    focus:outline-none focus:ring-2 focus:ring-bgPrimary/20 focus:border-bgPrimary/50
+                    w-72 transition-all placeholder:text-textMuted"
+                />
+                {filters.search && (
+                  <button
+                    onClick={() => setFilters((prev) => ({ ...prev, search: "" }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white rounded-full"
+                  >
+                    <X className="w-3 h-3 text-textMuted" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Right Section */}
+            <div className="flex items-center gap-3">
+              {/* Filter Button */}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl
+                  border transition-all duration-200
+                  ${showFilters || activeFiltersCount > 0
+                    ? "bg-bgPrimary text-white border-bgPrimary shadow-lg shadow-bgPrimary/20"
+                    : "bg-white text-textSecondary border-borderLight hover:border-bgPrimary/30 hover:shadow-md"
+                  }`}
+              >
+                <Filter className="w-4 h-4" />
+                Filters
+                {activeFiltersCount > 0 && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold
+                    ${showFilters ? "bg-white/20 text-white" : "bg-bgPrimary text-white"}`}>
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Add Task Button */}
+              <button
+                onClick={() => handleAddTask(localColumns[0]?.status._id || "")}
+                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold
+                  bg-gradient-to-r from-bgPrimary to-bgPrimaryDark text-white rounded-xl
+                  hover:shadow-lg hover:shadow-bgPrimary/30 hover:scale-[1.02]
+                  transition-all duration-200"
+              >
+                <Plus className="w-4 h-4" />
+                Add Task
+              </button>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
-              showFilters || activeFiltersCount > 0
-                ? "bg-bgPrimary text-white border-bgPrimary"
-                : "bg-white text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            <Filter className="w-4 h-4" />
-            Filters
-            {activeFiltersCount > 0 && (
-              <span className="bg-white text-bgPrimary text-xs px-1.5 py-0.5 rounded-full">
-                {activeFiltersCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => handleAddTask(localColumns[0]?.status._id || "")}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-bgPrimary text-white rounded-lg hover:bg-bgPrimaryDark transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Task
-          </button>
-        </div>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <TaskFiltersPanel
+            filters={filters}
+            onFiltersChange={setFilters}
+            onClose={() => setShowFilters(false)}
+          />
+        )}
       </div>
 
-      {/* Filters Panel */}
-      {showFilters && (
-        <TaskFiltersPanel
-          filters={filters}
-          onFiltersChange={setFilters}
-          onClose={() => setShowFilters(false)}
-        />
-      )}
-
       {/* Board */}
-      <div className="flex-1 overflow-x-auto p-4">
+      <div className="flex-1 overflow-x-auto p-6">
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={collisionDetection}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
-          <div className="flex gap-4 h-full">
+          <div className="flex gap-5 h-full pb-4">
             {localColumns.map((column) => (
-              <TaskColumnComponent
+              <DroppableColumn
                 key={column.status._id}
                 column={column}
-                filteredTasks={getFilteredTasks(column.tasks)}
+                tasks={getFilteredTasks(column.tasks)}
                 onTaskClick={handleTaskClick}
                 onAddTask={handleAddTask}
+                isOver={overColumnId === column.status._id}
               />
             ))}
           </div>
 
-          <DragOverlay>
+          <DragOverlay dropAnimation={null}>
             {activeTask && <TaskCardOverlay task={activeTask} />}
           </DragOverlay>
         </DndContext>

@@ -1,9 +1,5 @@
 "use client";
 
-import Header from "@/components/common/Header";
-import NotificationSidebar from "@/components/common/NotificationSidebar";
-import FloatingMessageButton from "@/components/common/FloatingMessageButton";
-import FloatingFooter from "@/components/common/FloatingFooter";
 import { useAuth } from "@/hooks/useAuth";
 import { useProgramUpdateNotifications } from "@/hooks/useProgramUpdateNotifications";
 
@@ -16,21 +12,17 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   // Show nothing while checking auth - prevents UI flicker
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center  justify-center">
         <div className="text-gray-500">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="relative">
-      <Header />
-      <div className="mr-80 pt-16 pb-20">
+    <div className="w-full h-full min-h-screen bg-gradient-to-br from-bgSoft/50 to-white border-2">
+      <div className="p-0 bg-gradient-to-br from-bgSoft/50 to-white">
         {children}
       </div>
-      <NotificationSidebar />
-      <FloatingMessageButton />
-      {/* <FloatingFooter /> */}
     </div>
   );
 }

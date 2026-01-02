@@ -17,7 +17,7 @@ export default function FloatingFooter() {
 
   const handleNavigate = (view: ViewType) => {
     if (view === "checklist") {
-      router.push("/main/checklist");
+      router.push("/checklist");
     } else {
       router.push("/main/event");
     }

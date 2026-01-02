@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import ReactQueryProvider from "./providers/ReactQueryProvider";
 import { SocketProvider } from "./providers/SocketProvider";
+import FloatingFooter from "@/components/common/FloatingFooter";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           theme="colored"
         />
         <Toaster position="top-right" />
+        <FloatingFooter />
       </body>
     </html>
   );
