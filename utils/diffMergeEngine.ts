@@ -51,11 +51,6 @@ export function computeDiff(currentHtml: string, requestedHtml: string): Change[
   const currentBlocks = parseHtmlToBlocks(currentHtml);
   const requestedBlocks = parseHtmlToBlocks(requestedHtml);
 
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('📊 [DiffEngine] Starting Diff');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`[DiffEngine] Current blocks: ${currentBlocks.length}`);
-  console.log(`[DiffEngine] Requested blocks: ${requestedBlocks.length}`);
 
   // Create lookup maps for efficient matching
   const currentByText = new Map<string, HtmlBlock[]>();
@@ -91,13 +86,9 @@ export function computeDiff(currentHtml: string, requestedHtml: string): Change[
           originalBlock: exactMatch,
           incomingBlock: reqBlock,
         });
-        console.log(
-          `[DiffEngine] 🎨 Block ${reqIdx} FORMATTING MODIFIED (original index ${exactMatch.index})`
-        );
       } else {
         // EXACT MATCH - no change needed (same text AND same formatting)
         matchedCurrentIndices.add(exactMatch.index);
-        console.log(`[DiffEngine] ✓ Block ${reqIdx} unchanged (matched with ${exactMatch.index})`);
       }
     } else {
       // Check for MODIFICATION (same type, different content)
@@ -119,9 +110,6 @@ export function computeDiff(currentHtml: string, requestedHtml: string): Change[
           originalBlock: sameTypeBlock,
           incomingBlock: reqBlock,
         });
-        console.log(
-          `[DiffEngine] ✏️  Block ${reqIdx} TEXT MODIFIED (original index ${sameTypeBlock.index})`
-        );
       } else {
         // ADDED - new block not in current
         changes.push({
@@ -132,7 +120,6 @@ export function computeDiff(currentHtml: string, requestedHtml: string): Change[
           originalBlock: null,
           incomingBlock: reqBlock,
         });
-        console.log(`[DiffEngine] ✨ Block ${reqIdx} ADDED`);
       }
     }
   });
@@ -149,7 +136,6 @@ export function computeDiff(currentHtml: string, requestedHtml: string): Change[
         originalBlock: currBlock,
         incomingBlock: null,
       });
-      console.log(`[DiffEngine] 🗑️  Block ${currIdx} REMOVED`);
     }
   });
 
@@ -160,9 +146,6 @@ export function computeDiff(currentHtml: string, requestedHtml: string): Change[
     return a.originalIndex - b.originalIndex;
   });
 
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`[DiffEngine] ✅ Found ${changes.length} changes`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   return changes;
 }
@@ -198,10 +181,6 @@ export function applyChanges(
     return currentHtml;
   }
 
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('🔧 [MergeEngine] Applying Changes');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`[MergeEngine] Accepted changes: ${acceptedChanges.length}`);
 
   // Start with current blocks
   let resultBlocks = parseHtmlToBlocks(currentHtml);
@@ -216,13 +195,11 @@ export function applyChanges(
 
   // Apply REMOVALS first (from end to start)
   removals.forEach((change) => {
-    console.log(`[MergeEngine] 🗑️  Removing block at index ${change.originalIndex}`);
     resultBlocks = resultBlocks.filter((block) => block.index !== change.originalIndex);
   });
 
   // Apply MODIFICATIONS
   modifications.forEach((change) => {
-    console.log(`[MergeEngine] ✏️  Modifying block at index ${change.originalIndex}`);
     const targetIndex = resultBlocks.findIndex((block) => block.index === change.originalIndex);
     if (targetIndex !== -1 && change.incomingBlock) {
       // Replace with incoming block but preserve original index
@@ -236,7 +213,6 @@ export function applyChanges(
   // Apply ADDITIONS
   additions.forEach((change) => {
     if (change.incomingBlock) {
-      console.log(`[MergeEngine] ✨ Adding block at position ${change.incomingIndex}`);
 
       // Determine insertion position
       // If incoming index is within current length, insert at that position
@@ -260,8 +236,6 @@ export function applyChanges(
     index: idx,
   }));
 
-  console.log(`[MergeEngine] ✅ Result: ${resultBlocks.length} blocks`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Reconstruct HTML
   return reconstructHtmlFromBlocks(resultBlocks);

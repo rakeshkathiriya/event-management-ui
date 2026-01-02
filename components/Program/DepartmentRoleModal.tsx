@@ -141,7 +141,6 @@ const DepartmentRoleModal = ({
         await onRoleUpdate();
       }
     } catch (error) {
-      console.error("Failed to save role:", error);
       toast.error(role ? "Failed to update role description" : "Failed to create role description");
     }
   };
@@ -168,7 +167,7 @@ const DepartmentRoleModal = ({
           </div>
           <h3 className="mb-2 text-xl font-semibold text-gray-900">Access Denied</h3>
           <p className="text-gray-600">
-            You don't have permission to view this department's role description.
+            You do not have permission to view this department role description.
           </p>
           <button
             onClick={onClose}

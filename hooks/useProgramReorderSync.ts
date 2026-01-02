@@ -14,16 +14,9 @@ export const useProgramReorderSync = () => {
     if (!socket || !isConnected) return;
 
     // Listen for program reorder events from backend
-    socket.on("day:programs-reordered", (data: any) => {
-      console.log("📢 Programs reordered in real-time:", data);
-      console.log(`   Day ID: ${data.dayId}`);
-      console.log(`   Reordered by: ${data.reorderedBy}`);
-      console.log(`   Programs count: ${data.programIds.length}`);
-
+    socket.on("day:programs-reordered", () => {
       // Invalidate the event query to fetch latest order
       queryClient.invalidateQueries({ queryKey: ["getNearestEvent"] });
-
-      console.log(`✅ Event cache invalidated - UI will refresh with new order`);
     });
 
     return () => {

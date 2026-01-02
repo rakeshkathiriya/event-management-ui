@@ -11,8 +11,10 @@ export interface LineChange {
   type: ChangeType;
   currentLine?: string; // HTML content from current version
   incomingLine?: string; // HTML content from incoming version
+  requestedLine?: string; // Alias for incomingLine for backward compatibility
   lineNumber: number;
   isMerged: boolean; // Has this line been merged via arrow click?
+  isAccepted?: boolean; // Has this change been accepted?
 }
 
 export interface DiffResult {

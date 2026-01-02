@@ -146,7 +146,6 @@ export default function SendMessageModal({ isOpen, onClose }: SendMessageModalPr
       };
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error:', event.error);
         switch (event.error) {
           case 'not-allowed':
             toast.error('Microphone access denied. Please allow microphone access.');

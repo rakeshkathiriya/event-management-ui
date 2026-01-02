@@ -11,7 +11,6 @@ const api: AxiosInstance = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    console.log("Request Sent To:", config.url);
     const token = localStorage.getItem("accessToken");
     if (token) {
       config.headers = config.headers || {};
@@ -20,14 +19,12 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error(" Request Error:", error);
     return Promise.reject(error);
   }
 );
 
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log(" Response Received:", response.status);
     return response;
   },
   async (error: AxiosError) => {
@@ -35,7 +32,6 @@ api.interceptors.response.use(
       localStorage.clear();
       globalThis.window.location.href = "/";
     }
-    console.error(" Request Error:", error);
     throw error instanceof Error ? error : new Error("Request failed");
   }
 );

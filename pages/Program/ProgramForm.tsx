@@ -168,7 +168,6 @@ const ProgramForm = ({ onCancel, refetchData, program }: ProgramFormProps) => {
                   }
                 });
 
-                console.log("Executing role operations:", operations.length);
 
                 try {
                   const results = await Promise.allSettled(operations);
@@ -176,13 +175,10 @@ const ProgramForm = ({ onCancel, refetchData, program }: ProgramFormProps) => {
                   const failed = results.filter((r) => r.status === "rejected");
                   const succeeded = results.filter((r) => r.status === "fulfilled");
 
-                  console.log("✅ Succeeded:", succeeded.length);
-                  console.log("❌ Failed:", failed.length);
 
                   if (failed.length > 0) {
                     failed.forEach((result, index) => {
                       if (result.status === "rejected") {
-                        console.error(`Failed operation ${index}:`, result.reason);
                       }
                     });
                     toast.error(`Program updated but ${failed.length} role operation(s) failed. Check console.`);
@@ -193,7 +189,6 @@ const ProgramForm = ({ onCancel, refetchData, program }: ProgramFormProps) => {
                   refetchData?.();
                   onCancel();
                 } catch (error) {
-                  console.error("❌❌❌ Role operations failed:", error);
                   toast.error("Program updated but some role operations failed");
                 }
               } else {
@@ -211,9 +206,6 @@ const ProgramForm = ({ onCancel, refetchData, program }: ProgramFormProps) => {
               const programId = res.data._id;
 
               // Create roles for each department
-              console.log("Program created with ID:", programId);
-              console.log("Department IDs:", payload.departmentIds);
-              console.log("Department Roles Map:", departmentRoles);
 
               const rolePromises = payload.departmentIds.map(async (deptId) => {
                 const roleData = {
@@ -221,20 +213,11 @@ const ProgramForm = ({ onCancel, refetchData, program }: ProgramFormProps) => {
                   departmentId: deptId,
                   roleDescription: departmentRoles.get(deptId)!,
                 };
-                console.log("Creating role for department:", deptId, roleData);
 
                 try {
                   const result = await createRoleAsync(roleData);
-                  console.log("✅ Role created successfully:", result);
                   return result;
                 } catch (err: any) {
-                  console.error("❌ Failed to create role for department:", deptId);
-                  console.error("Error details:", {
-                    message: err?.message,
-                    response: err?.response?.data,
-                    status: err?.response?.status,
-                    error: err,
-                  });
                   throw err;
                 }
               });
@@ -245,7 +228,6 @@ const ProgramForm = ({ onCancel, refetchData, program }: ProgramFormProps) => {
                 refetchData?.();
                 onCancel();
               } catch (error: any) {
-                console.error("❌❌❌ Role creation failed:", error);
                 toast.error("Program created but some roles failed to save. Check console for details.");
               }
             } else {

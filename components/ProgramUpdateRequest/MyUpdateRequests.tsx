@@ -1,8 +1,8 @@
 "use client";
 
-import { Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { useGetMyUpdateRequests } from "@/queries/programUpdateRequest/programUpdateRequest";
 import { format } from "date-fns";
+import { AlertCircle, CheckCircle, Clock, XCircle } from "lucide-react";
 
 const MyUpdateRequests = () => {
   const { data: requests, isLoading } = useGetMyUpdateRequests();
@@ -70,7 +70,7 @@ const MyUpdateRequests = () => {
   if (!requests || requests.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <p className="text-gray-500">You haven't submitted any update requests yet.</p>
+        <p className="text-gray-500">You have not submitted any update requests yet.</p>
       </div>
     );
   }

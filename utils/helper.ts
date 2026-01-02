@@ -23,7 +23,6 @@ export const getUserRole = () => {
     const decoded: DecodedToken = jwtDecode(token);
     return decoded.role || null;
   } catch (error) {
-    console.error("Invalid Token:", error);
     return null;
   }
 };
@@ -41,7 +40,6 @@ export const getUserFromToken = () => {
       name: decoded.name || "User", // Fallback for old tokens without name
     };
   } catch (error) {
-    console.error("Invalid Token:", error);
     return null;
   }
 };
@@ -60,7 +58,6 @@ export const getToken = (): string | null => {
 
     return token;
   } catch (error) {
-    console.error("Invalid Token:", error);
     return null;
   }
 };
